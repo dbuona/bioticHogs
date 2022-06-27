@@ -58,3 +58,26 @@ abun.rel.count<-round(abun.rel*100)
 beta.pair.abund(abun.rel.count, index.family="bray")
 
 beta.pair(dummy$abun, index.family="sorensen") #would need to binarize doent run
+
+#####DECAY MODEL
+
+require(vegan)
+
+data(BCI)
+## UTM Coordinates (in metres)
+UTM.EW <- rep(seq(625754, 626654, by=100), each=5)
+UTM.NS <- rep(seq(1011569,  1011969, by=100), len=50)
+
+spat.dist<-dist(data.frame(UTM.EW, UTM.NS))
+dissim.BCI<-beta.pair.abund(BCI)$beta.bray.bal
+
+plot(spat.dist, dissim.BCI, ylim=c(0,1), xlim=c(0, max(spat.dist)))
+
+BCI.decay.exp<-decay.model(dissim.BCI, spat.dist, y.type="dissim", model.type="exp", perm=100)
+
+BCI.decay.pow<-decay.model(dissim.BCI, spat.dist, y.type="dissim", model.type="pow", perm=100)
+
+
+plot.decay(BCI.decay.exp, col=rgb(0,0,0,0.5))
+plot.decay(BCI.decay.exp, col="red", remove.dots=TRUE, add=TRUE)
+plot.decay(BCI.decay.pow, col="blue", remove.dots=TRUE, add=TRUE)
