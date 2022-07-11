@@ -28,34 +28,23 @@ setwd("~/PowellCenter/")
 set.seed(3)
 
 d<-read.csv("Data/FULLDatabase_05272022.csv")
+d.env<-read.csv("Data/SPCIS_plots_env_17thJune2022.csv")
 d.ref<-read.csv("Data/FullDatabase_diversity.csv")
-d.eco<-read.csv("Data/MergedDatasets_16July2021_EB_BB_hex_state_eco_EVT.csv") ###not sure if this corresponds
-d.eco<-filter(d.eco,NA_L3NAME=="Atlantic Coastal Pine Barrens")
 
-dat<-dplyr::filter(d,Dataset=="VNHP") ## subsemt to just virginia data for now
-dat<-filter(dat,Resampled=="N")
+#####to start with lets just do native species
 
-ref.prestine<-filter(d.ref,RelCov_I==0)
-unique(dat$Plot)
-range(dat$Lat)
-range(dat$Long)
-dat<-filter(dat,Lat>=38)
+unique(d.env$US_L3NAME)
+d<-filter(d,Resampled=="N") ### we'll need to figure out how to deal with multiple timepoints later
 
+d.nat<-filter(d,NativeStatus=="N")
 
+tlands<-dplyr::filter(d.env,US_L3NAME=="North Central Appalachians") ## subsemt to just virginia data for now
 
+dat<-filter(d.nat, Plot %in% c(unique(tlands$Plot)))
 
-use<-sample_n(as.data.frame(unique(dat$Plot)),500)
- ## choose 100 random site for now for computational purpos
-
-dat.p<-filter(dat,Plot %in% c(unique(ref.prestine$Plot)))
-use_prestine<-sample_n(as.data.frame(unique(dat.p$Plot)),500)
-## remove site that that have been resampled...will need to think about how to deal with this later
-
-
-daty<-dplyr::filter(dat,Plot %in% c(use$`unique(dat$Plot)`))
-dater<-dplyr::select(daty,Plot,AcceptedTaxonName,PctCov_100) ## rid of complilcating columns
+dater<-dplyr::select(dat,Plot,AcceptedTaxonName,PctCov) ## rid of complilcating columns
 dater<-dplyr::filter(dater,!is.na(dater$AcceptedTaxonName)) ## spreading the data to long for (matrix) won't work if there are NA's in taxon name so get rid of them here
-goo<- tidyr::spread(dater,AcceptedTaxonName,PctCov_100)  ## spread to long       
+goo<- tidyr::spread(dater,AcceptedTaxonName,PctCov)  ## spread to long       
 goo[is.na(goo)] <- 0 ## make na's zeros
 rownames(goo)<-goo$Plot # convert plot names to row names
 goo<-dplyr::select(goo,-Plot) # remove plot column
@@ -63,65 +52,54 @@ goo<-as.matrix.data.frame(goo) # make it a matrix
 
 
 
-###prestine data)
-daty.p<-dplyr::filter(dat.p,Plot %in% c(use$`unique(dat$Plot)`))
-dater.p<-dplyr::select(daty.p,Plot,AcceptedTaxonName,PctCov_100) ## rid of complilcating columns
-dater.p<-dplyr::filter(dater.p,!is.na(dater.p$AcceptedTaxonName)) ## spreading the data to long for (matrix) won't work if there are NA's in taxon name so get rid of them here
-goo.p<- tidyr::spread(dater.p,AcceptedTaxonName,PctCov_100)  ## spread to long       
-goo.p[is.na(goo.p)] <- 0 ## make na's zeros
-rownames(goo.p)<-goo.p$Plot # convert plot names to row names
-goo.p<-dplyr::select(goo.p,-Plot) # remove plot column
-goo.p<-as.matrix.data.frame(goo.p) # make it a matrix
-
 
 #a<-vegdist(goo,method="jaccard",binary=TRUE)# calculate pairwise dissiminarity with horn index
 
 
 ### now try geogrpahic distance of all plots #####
-dater2<-dplyr::select(daty,Plot,Long,Lat) ## subset to lat longs
+dater2<-dplyr::select(dat,Plot,Long,Lat) ## subset to lat longs
 dater2<-distinct(dater2) ## remove dplicates casue each species was a row
 rownames(dater2)<-dater2$Plot # convert plot names to row names
 dater2<-dplyr::select(dater2,-Plot) # remove plot column
-
-
-dater2.p<-dplyr::select(daty.p,Plot,Long,Lat) ## subset to lat longs
-dater2.p<-distinct(dater2.p) ## remove dplicates casue each species was a row
-rownames(dater2.p)<-dater2.p$Plot # convert plot names to row names
-dater2.p<-dplyr::select(dater2.p,-Plot) # remove plot column
 
 #######betapartpackages#######################
 #remember, this doesnt work right on % data
 
 d1<-beta.pair.abund(goo)$beta.bray
-d2<-dist(dater2)
-
-beta.multi.abund(goo)
-
-beta.multi.abund(goo.p)
-
-d1.p<-beta.pair.abund(goo.p)$beta.bray
-d2.p<-dist(dater2.p)
+d1a<-beta.pair.abund(goo)$beta.bray.bal
+d1b<-beta.pair.abund(goo)$beta.bray.gra
 
 
+mydat<-data.frame(sim=d1,distance=d2)
+
+d1<-as.vector(d1)
+d2<-as.vector(d2)
+
+ggplot(mydat,aes(d2,d1))+geom_point()+geom_smooth()
 
 BCI.decay.exp<-decay.model(d1, d2, y.type="dissimilarities", model.type="exp", perm=100)
-BCI.decay.exp.p<-decay.model(d1.p, d2.p, y.type="dissimilarities", model.type="exp", perm=100)
+BCI.decay.exp.bal<-decay.model(d1a, d2, y.type="dissimilarities", model.type="exp", perm=100)
+BCI.decay.exp.gra<-decay.model(d1b, d2, y.type="dissimilarities", model.type="exp", perm=100)
 
-?decay.model()
-plot.decay(BCI.decay.exp, col=rgb(0,0,0,0.5),ylim=c(0.3,1))
+summary(BCI.decay.exp)
+
+plot.decay(BCI.decay.exp, col=rgb(0,0,0,0.5),ylim=c(0,1))
 plot.decay(BCI.decay.exp, col="red", remove.dots=TRUE, add=TRUE)
-plot.decay(BCI.decay.exp.p, col="blue", remove.dots=TRUE, add=TRUE)
+
+plot.decay(BCI.decay.exp.bal, col=rgb(0,0,0,0.5),ylim=c(0,1))
+plot.decay(BCI.decay.exp.bal, col="blue", remove.dots=TRUE, add=TRUE)
+
+plot.decay(BCI.decay.exp.gra, col=rgb(0,0,0,0.5),ylim=c(0,1))
+plot.decay(BCI.decay.exp.gra, col="green", remove.dots=TRUE, add=TRUE)
+
+
+
+###############################gr#######
 
 
 
 
-######################################
-
-
-
-
-
-b<-geodist(dater2,measure="haversine") ## haversime distance
+b<-dist(dater2,ethm="haversine") ## haversime distance
 
 colnames(b)<-rownames(dater2)
 rownames(b)<-rownames(dater2)
@@ -134,40 +112,17 @@ b <- data.frame(site1=rep(row.names(b),ncol(b)),
 
 
 
-a<-hill_taxa_parti_pairwise(goo, q = 2,pairs = "full") ### caclulate pairwise hill number based on simpsons (abudance weighted)
+hill_taxa_parti_pairwise(goo, q = 2,pairs = "full") ### caclulate pairwise hill number based on simpsons (abudance weighted)
 
-mydata<-left_join(a,b) ## data frame with distance and dissimilarity
-
-
-
-##compute invasion level differences
-d.ref.here<-dplyr::filter(d.ref, Plot %in% c(use$`unique(dat$Plot)`) ) ### 
-
-d.ref.here<-select(d.ref.here,Plot,RelCov_I)
-#d.ref.here<-distinct(d.ref.here)
-rownames(d.ref.here)<-d.ref.here$Plot
-#d.ref.here<-select(d.ref.here,RelCov_I)
-
-d.invasion<-data.frame(site1=rep(d.ref.here$Plot,100),site2=rep(d.ref.here$Plot,each=100),inv1=rep(d.ref.here$RelCov_I,100),inv2=rep(d.ref.here$RelCov_I,each=100))
-d.invasion$inv1<-as.numeric(d.invasion$inv1)
-d.invasion$inv2<-as.numeric(d.invasion$inv2)
-d.invasion$diffinv<-abs(d.invasion$inv1-d.invasion$inv2)
-d.invasion$meaninv<-(d.invasion$inv1+d.invasion$inv2)/2
-
-d.invasion<-select(d.invasion,-inv1,-inv2)
-mydata<-left_join(mydata,d.invasion)
-
-mydata$diffinv.bin<-ifelse(mydata$diffinv<.2,"low","high")
-mydata$meaninv.bin<-ifelse(mydata$meaninv<.2,"low","high")
-mydata$inv_composite<-mydata$diffinv*mydata$meaninv
-mydata$inv.bin<-ifelse(mydata$meaninv<4.178227e-01 ,"low","high")
-
-quantile(mydata$inv_composite,na.rm=TRUE)
-
-mydata<-filter(mydata,site1!=site2)
+mydata<-left_join(a,d2) ## data frame with distance and dissimilarity
 
 
-ggplot(mydata,aes(distance,local_similarity))+geom_smooth(aes(color=meaninv.bin))
+
+
+
+
+
+ggplot(mydata,aes(distance,local_similarity))+geom_smooth()
 
 ggplot(mydata,aes(distance,region_similarity))+
   geom_smooth(aes(color=inv.bin),method="gam")
