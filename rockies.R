@@ -1,4 +1,5 @@
-###go big
+###The beginning of this code is a loop to try and calculate all the pairwise dissimilarites
+## for all level three eco regions, but it takes forever and needs a super computer.
 
 rm(list=ls()) 
 options(stringsAsFactors = FALSE)
