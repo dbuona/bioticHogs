@@ -68,7 +68,7 @@ dater2.pri<-dplyr::select(dater2.pri,-Plot)
 d2<-dist(dater2.pri,method="euclidean") ### distance matrix
 
 beta.decay.pristine<-decay.model(d1, d2, y.type="dissimilarities", model.type="exp", perm=100)
-
+decay.model()
 plot.decay(beta.decay.pristine, col="purple",ylim=c(0.8,1), remove.dots=TRUE)
 
 ###### compare to high invasion plots
