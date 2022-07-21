@@ -74,6 +74,8 @@ rownames(b)<-dater2$Plot
 b2<-setNames(melt(b), c('site1', 'site2', 'distance'))
 goony<-left_join(hill,b2)
 
+nrow(goony)
+
 ggplot(goony,aes(distance,local_similarity))+geom_point() +geom_smooth(method="glm",method.args = list(family = "quasibinomial"))+
   geom_smooth()
 quantile(goony$distance,na.rm = TRUE)
@@ -83,7 +85,12 @@ mod1<-glm(local_similarity~distance*reldiff,data=goony,family=quasibinomial(link
 summary(mod1)
 
 mod2<-glm(local_similarity~distance*reldiff,data=goony,family=gaussian(link=log),start=c(0,0,0,0))
-summary(mod2)
+S
+mod2a<-brm(local_similarity~distance*reldiff, family=exgaussian(),
+           data=goony)
+
+summary(mod2a)
+
 
 new.data<-data.frame(distance=rep(c(0.00 , 16078.82,  74454.06 ,137064.15, 329217.91),each=5), reldiff=rep(c(0,.5,1,1.5,2),5))
 
@@ -95,12 +102,12 @@ plotty2<-cbind(new.data,predy2)
 
 
 
-bb<-ggplot()+
+ggplot()+
   geom_point(data=goony,aes(x=distance,y=local_similarity))+
   geom_smooth(data=plotty,aes(distance,predy,color=as.factor(reldiff)),method="glm",method.args = list(family = "quasibinomial"))+
   ggthemes::theme_few()
 
-aa<-ggplot()+
+ggplot()+
 geom_smooth(data=plotty,aes(distance,predy,color=as.factor(reldiff)),method="glm",method.args = list(family = "quasibinomial"))+
   ggthemes::theme_few()+ggtitle("quasibinomial")
 
@@ -118,4 +125,4 @@ dev.off()
 summary(mod1)
 
 
-
+###try again with everything as a matrix
