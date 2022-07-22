@@ -85,7 +85,7 @@ mod1<-glm(local_similarity~distance*reldiff,data=goony,family=quasibinomial(link
 summary(mod1)
 
 mod2<-glm(local_similarity~distance*reldiff,data=goony,family=gaussian(link=log),start=c(0,0,0,0))
-S
+
 mod2a<-brm(local_similarity~distance*reldiff, family=exgaussian(),
            data=goony)
 

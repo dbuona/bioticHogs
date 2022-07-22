@@ -20,7 +20,7 @@ d<-read.csv("Data/FULLDatabase_05272022.csv")
 d.env<-read.csv("Data/FULLDatabase_05272022_plotsenv4Jul2022.csv")
 d.ref<-read.csv("Data/FullDatabase_diversity_July4.csv")
 
-bos<-dplyr::filter(d.env,US_L3NAME== "Driftless Area")
+bos<-dplyr::filter(d.env,US_L3NAME== "Northeastern Coastal Zone")
 dat.bos<-filter(d, Plot %in% c(unique(bos$Plot)))
 dat.bos<-filter(dat.bos, Resampled=="N")
 driftless.ref<-filter(d.ref,Plot %in% c(unique(dat.bos$Plot)))
@@ -58,23 +58,17 @@ b<-geodist(dater2,paired = TRUE,measure = "haversine")
 dim(b)
 
 inv.data<-data.frame(Plot=rep(rownames(high),nrow(high)))
-dim(inv.data)
 inv.data<-left_join(inv.data,driftless.ref)
 inv.data2<-data.frame(Plot=rep(rownames(high),each=nrow(high)))
 inv.data2<-left_join(inv.data2,driftless.ref)
-dim(inv.data2)
 
 inv.data<-cbind(inv.data,inv.data2)
 colnames(inv.data)<-c("site1", "cov1","site2","cov2")
-
 inv.data$cov1<-inv.data$cov1/100
 inv.data$cov2<-inv.data$cov2/100
 
 inv.data$reldiff<-ifelse(inv.data$cov1==0,inv.data$cov2*2,(abs(inv.data$cov1-inv.data$cov2))/(abs(inv.data$cov1+inv.data$cov2)/2))
 
-
-
-ggplot(inv.data,aes(reldiff))+geom_histogram()
 fixcov<-which(inv.data$cov2==0)
 inv.data$reldiff[fixcov] <-inv.data$cov1[fixcov]*2
 
@@ -111,38 +105,36 @@ for(i in 1:nrow(b)) {
   }
 }
 
-mod1<-glm(Sim~Distance*Reldiff,data=mydat,family=quasibinomial(link=logit))
-summary(mod1)
-
 mydat$Diff.z<-(mydat$Reldiff-mean(mydat$Reldiff))/sd(mydat$Reldiff)
 mydat$Dist.z<-(mydat$Distance-mean(mydat$Distance))/sd(mydat$Distance)
 
-mod1z<-glm(Sim~Dist.z*Diff.z,data=mydat,family=quasibinomial(link=logit))
-summary(mod1z)
 
 
-
+mod1<-glm(Sim~Distance+Reldiff,data=mydat,family=quasibinomial(link=logit))
+summary(mod1)
 
 mod2<-glm(Sim~Distance*Reldiff,data=mydat,family=gaussian(link=log),start=c(0,0,0,0))
 
+quantile(mydat$Distance)
 
-
-new.data<-data.frame(Distance=rep(c(0.00 , 16078.82,  74454.06 ,137064.15, 329217.91),each=5), Reldiff=rep(c(0,.5,1,1.5,2),5))
-quantile(mydat$Dist.z)
-quantile(mydat$Diff.z)
-new.data.z<- data.frame(Dist.z=rep(c(-1.08259238, -0.88218901, -0.07548773,  0.59924142,  2.96791370 ),each=5), Diff.z=rep(c(-0.7760023, -0.7646318, -0.5801083,  0.6356005,  2.0804269 ),5))
-
+new.data<-data.frame(Distance=rep(c(0.00,  83922.93, 182868.45, 240369.10, 267699.66),each=5), Reldiff=rep(c(0,.5,1,1.5,2),5))
 
 predy<-predict(mod1, new.data, type="response")
 plotty<-cbind(new.data,predy)
 
-predy.z<-predict(mod1z, new.data.z, type="response")
-plottyz<-cbind(new.data.z,predy.z)
-
-
-
 predy2<-predict(mod2, new.data, type="response")
 plotty2<-cbind(new.data,predy2)
+
+cc<-ggplot()+
+  geom_line(data=plotty,aes(Distance,predy,color=as.factor(Reldiff)),size=1.5)+
+  ggthemes::theme_few()+ggtitle("quasibinomial")+scale_color_viridis_d("Invasion Difference")
+
+
+mod1a<-glm(Sim~Distance*Reldiff,data=mydat,family=quasibinomial(link=logit))
+summary(mod1a)
+
+predya<-predict(mod1a, new.data, type="response")
+plottya<-cbind(new.data,predya)
 
 
 
@@ -150,58 +142,15 @@ cc<-ggplot()+
   geom_line(data=plotty,aes(Distance,predy,color=as.factor(Reldiff)),size=1.5)+
   ggthemes::theme_few()+ggtitle("quasibinomial")+scale_color_viridis_d("Invasion Difference")
 
-ggplot()+
-  geom_line(data=plottyz,aes(Dist.z,predy,color=as.factor(Diff.z)),size=1.5)+
-  ggthemes::theme_few()+ggtitle("quasibinomial")+scale_color_viridis_d("Invasion Difference")
 
 
-
-aa<-ggplot()+
-  geom_line(data=plotty2,aes(Distance,predy2,color=as.factor(Reldiff)),size=1.5)+
-  ggthemes::theme_few()+ggtitle("exponetial")+scale_color_viridis_d("Invasion Difference")
-
-bb<-ggplot()+geom_point(data=mydat,aes(Distance,Sim))+  geom_line(data=plotty2,aes(Distance,predy2,color=as.factor(Reldiff)),size=1.5)+
-  geom_smooth(data=plotty2,aes(Distance,predy,color=as.factor(Reldiff)),method="glm",method.args = list(family = "quasibinomial"))+
-  ggthemes::theme_few()+ggtitle("exponetial")+scale_color_viridis_d("Invasion Difference")
-
-
-jpeg("..//git/bioticHogs/plots/firstlook_modcomp.jpeg")
-ggpubr::ggarrange(cc,aa,bb, common.legend = TRUE,labels=c("a)","b)","c)"),widths=c(.6,.6,.4))
+jpeg("..//git/bioticHogs/plots/modnopooling_NEcoast.jpeg")
+cc
 dev.off()
-
-library(lme4)
-mod1a<-glmer(Sim~Distance*Reldiff+(1|RowID),data=mydat,family=binomial())
-class(mydat$RowID)
-
-test<-brm(Sim~Dist.z*Diff.z+(1|mm(RowID,ColumnID)),data=mydat,family=zero_inflated_beta())
+range(mydat$Sim)
+mydat$Sim2<-ifelse(mydat$Sim==1,.9999999,mydat$Sim)
+test<-brm(Sim2~Dist.z*Diff.z+(1|mm(RowID,ColumnID)),data=mydat,family=zero_inflated_beta())
 summary(test)
+834*834
 
-test.exp<-brm(Sim~Dist.z*Diff.z+(1|mm(RowID,ColumnID)),data=mydat,family=gaussian(link="log"))
-
-
-
-
-jpeg("../git/bioticHogs/plots/ppcheck_zibeta.jpeg")
-pp_check(test,ndraws=100)
-dev.off()
-jpeg("../git/bioticHogs/plots/mm_output.jpeg")
-plot()
-
-dev.off()
-
-
-jpeg("../git/bioticHogs/plots/conditionaleffect_zibeta.jpeg")
-pp<-conditional_effects(test,effect="Dist.z:Diff.z",prob = .5)#, int_conditions = list(Diff.z = quantile))
-
-
-plot(pp,plot=FALSE)[[1]]+
-  scale_color_viridis_d(direction=-1)+scale_fill_viridis_d(direction = -1)+ggthemes::theme_few()
-dev.off()
-
-
-
-
-
-
-
-
+save.image("../git/bioticHogs/NE.coastalincomplee.Rda")
