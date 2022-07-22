@@ -13,12 +13,12 @@ library(hillR)
 library(betapart)
 library(reshape2)
 
-setwd("~/PowellCenter/")
+setwd("~Desktop/Powell/")
 set.seed(3)
 
 d<-read.csv("Data/FULLDatabase_05272022.csv")
-d.env<-read.csv("Data/SPCIS_plots_env_17thJune2022.csv")
-d.ref<-read.csv("Data/FullDatabase_diversity.csv")
+d.env<-read.csv("Data/FULLDatabase_05272022_plotsenv4Jul2022.csv")
+d.ref<-read.csv("Data/FullDatabase_diversity_July4.csv")
 
 bos<-dplyr::filter(d.env,US_L3NAME== "Driftless Area")
 dat.bos<-filter(d, Plot %in% c(unique(bos$Plot)))
@@ -92,24 +92,35 @@ for(i in 1:nrow(b)) {
 }
 
 
+ggplot(mydat,aes(Simround))+geom_histogram()
+ggplot(mydat,aes(Distance))+geom_histogram()
 
 mod1<-glm(Sim~Distance,data=mydat,family=gaussian(link=log),start=c(0,0))
 
 summary(mod1)
 summary(mod1)
 
+
+
+library(brms)
 get_prior(Sim~Distance,
-          family=gaussian(link="log")
-          ,
+          family=zero_inflated_beta_binomial(),
           data=mydat)
 
-priorz<-c(prior("student_t(3, 0, 1", "b"),
-          prior("student_t(3, 0, 1)","Intercept"),
-          prior("student_t(3, 0, 1)","sigma"))
 
-mod1a<-brm(Sim~Distance,
-              family=zero_inflated_beta(),
-              data=mydat, cores=4, init=0)
+priorz<-c(prior("student_t(3, 0, 1.5", "b"),
+          prior("uniform(.5,1)","Intercept"))
+          
+
+mydat$Sim.adj<-ifelse(mydat$Sim==0,0.000000000000001,mydat$Sim)
+mydat$Simround<-as.integer(round(mydat$Sim*100))
+
+ggplot(mydat,aes(Distance,Simround))+geom_point()
+table(mydat$Simround)
+
+mod1a<-brm(Simround~Distance,
+              family=zero_inflated_negbinomial(),init=0,
+              data=mydat,warmup=3000,iter=4000,chains=2)
 summary(mod1a)
 plot(mod1a)
 pp_check(mod1a,ndraws = 100)

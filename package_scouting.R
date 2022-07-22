@@ -81,3 +81,11 @@ BCI.decay.pow<-decay.model(dissim.BCI, spat.dist, y.type="dissim", model.type="p
 plot.decay(BCI.decay.exp, col=rgb(0,0,0,0.5))
 plot.decay(BCI.decay.exp, col="red", remove.dots=TRUE, add=TRUE)
 plot.decay(BCI.decay.pow, col="blue", remove.dots=TRUE, add=TRUE)
+
+d1<-data.frame(beta=as.vector(dissim.BCI),space=as.vector(spat.dist))
+
+decay.glm<-glm(beta~space,data=d1,family =gaussian)
+ d1$predi<- predict(decay.glm)
+
+ggplot(d1,aes(space,beta))+geom_point()
+
