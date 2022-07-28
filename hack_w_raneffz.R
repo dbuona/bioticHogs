@@ -3,6 +3,7 @@ rm(list=ls())
 options(stringsAsFactors = FALSE)
 options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
+
 graphics.off()
 
 library(dplyr)
@@ -67,16 +68,14 @@ dim(inv.data2)
 inv.data<-cbind(inv.data,inv.data2)
 colnames(inv.data)<-c("site1", "cov1","site2","cov2")
 
-inv.data$cov1<-inv.data$cov1/100
-inv.data$cov2<-inv.data$cov2/100
+inv.data$cov1<-inv.data$cov1/100+.1
+inv.data$cov2<-inv.data$cov2/100+.1
+range(inv.data$cov1)
 
-inv.data$reldiff<-ifelse(inv.data$cov1==0,inv.data$cov2*2,(abs(inv.data$cov1-inv.data$cov2))/(abs(inv.data$cov1+inv.data$cov2)/2))
+inv.data$reldiff<-abs((inv.data$cov1-inv.data$cov2)/((inv.data$cov1+inv.data$cov2)))
 
 
 
-ggplot(inv.data,aes(reldiff))+geom_histogram()
-fixcov<-which(inv.data$cov2==0)
-inv.data$reldiff[fixcov] <-inv.data$cov1[fixcov]*2
 
 
 
@@ -84,14 +83,6 @@ goo<-select(inv.data,site1,site2,reldiff)
 
 
 goo<-acast(goo,site1~site2,value.var="reldiff")
-
-goo %>% 
-  as.data.frame() %>%
-  rownames_to_column("cov1") %>%
-  pivot_longer(-c(cov1), names_to = "cov2", values_to = "reldiff") %>%
-  ggplot(aes(x=cov2, y=cov1, fill=reldiff)) + 
-  geom_raster()+
-  scale_fill_viridis_c()
 
 dim(goo)
 
@@ -122,15 +113,11 @@ summary(mod1z)
 
 
 
-
-mod2<-glm(Sim~Distance*Reldiff,data=mydat,family=gaussian(link=log),start=c(0,0,0,0))
-
-
-
 new.data<-data.frame(Distance=rep(c(0.00 , 16078.82,  74454.06 ,137064.15, 329217.91),each=5), Reldiff=rep(c(0,.5,1,1.5,2),5))
 quantile(mydat$Dist.z)
 quantile(mydat$Diff.z)
-new.data.z<- data.frame(Dist.z=rep(c(-1.08259238, -0.88218901, -0.07548773,  0.59924142,  2.96791370 ),each=5), Diff.z=rep(c(-0.7760023, -0.7646318, -0.5801083,  0.6356005,  2.0804269 ),5))
+new.data.z<- data.frame(Dist.z=rep(c(-1.08259238, -0.88218901, -0.07548773,  0.59924142,  2.96791370 ),each=5), Diff.z=rep(c(-0.7760023, -0.7646318, -0.5801083,  0.6356005,  2.0804269 ),5),RowID=rep(2,25),ColumnID=rep(1,25))
+
 
 
 predy<-predict(mod1, new.data, type="response")
@@ -152,7 +139,7 @@ cc<-ggplot()+
 
 ggplot()+
   geom_line(data=plottyz,aes(Dist.z,predy,color=as.factor(Diff.z)),size=1.5)+
-  ggthemes::theme_few()+ggtitle("quasibinomial")+scale_color_viridis_d("Invasion Difference")
+  ggthemes::theme_few()+scale_color_viridis_d("Invasion Difference")
 
 
 
@@ -169,14 +156,25 @@ jpeg("..//git/bioticHogs/plots/firstlook_modcomp.jpeg")
 ggpubr::ggarrange(cc,aa,bb, common.legend = TRUE,labels=c("a)","b)","c)"),widths=c(.6,.6,.4))
 dev.off()
 
-library(lme4)
-mod1a<-glmer(Sim~Distance*Reldiff+(1|RowID),data=mydat,family=binomial())
-class(mydat$RowID)
 
+
+library(brms)
 test<-brm(Sim~Dist.z*Diff.z+(1|mm(RowID,ColumnID)),data=mydat,family=zero_inflated_beta())
+range(mydat$Dist.z)
+
+newdaters<-data.frame(Diff.z=rep(c(-0.8465717, 2.4832547),5),Dist.z=rep(c(-1,0,1,2,2.5),each=2))
+
+predyz<-fitted(test,newdata = newdaters,re_formula = NA)
+plotz<-cbind(newdaters,predyz)
+ggplot(plotz,aes(Dist.z,Estimate))+geom_line(aes(color=as.factor(Diff.z)))
+
+output<-cbind(mydat,fitted(test))
+ggplot(output,aes(Dist.z,Estimate))+geom_smooth()
+
 summary(test)
 
-test.exp<-brm(Sim~Dist.z*Diff.z+(1|mm(RowID,ColumnID)),data=mydat,family=gaussian(link="log"))
+
+
 
 
 
@@ -191,13 +189,15 @@ dev.off()
 
 
 jpeg("../git/bioticHogs/plots/conditionaleffect_zibeta.jpeg")
-pp<-conditional_effects(test,effect="Dist.z:Diff.z",prob = .5)#, int_conditions = list(Diff.z = quantile))
+pp<-conditional_effects(test,effect="Dist.z:Diff.z",prob = .5, int_conditions = list(Diff.z = quantile))
 
 
 plot(pp,plot=FALSE)[[1]]+
   scale_color_viridis_d(direction=-1)+scale_fill_viridis_d(direction = -1)+ggthemes::theme_few()
 dev.off()
 
+
+save.image("../git/bioticHogs/drifless.Rda")
 
 
 
