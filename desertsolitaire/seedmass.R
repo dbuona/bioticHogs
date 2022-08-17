@@ -26,13 +26,13 @@ d.env1<-read.csv("Data/FULLDatabase_05272022_plotsenv4Jul2022.csv")
 d<-read.csv("Data/spcisFullEco_withTRY_24May2022 (1).csv")
 colnames(d)
 unique(d.env1$NA_L2NAME)
-d.env<-filter(d.env1, NA_L2NAME %in% c("WARM DESERTS"))
+d.env<-filter(d.env1, NA_L3NAME %in% c("High Plains"))
 table(d.env$US_L3NAME)
 
-d.env<-filter(d.env, NA_L3NAME %in% c("Mojave Basin and Range"))
+d.env<-filter(d.env, NA_L3NAME %in% c("High Plains"))
 d<-filter(d, Plot %in% unique(d.env$Plot))    
 
-d<-filter(d,!is.na(Seed.dry.mass))
+d<-filter(d,!is.na(SLA))
 
 
 
@@ -42,7 +42,7 @@ d<- d%>% group_by(Plot) %>%
   ungroup() ### this take resapled plots and chooses the most recent
 d<-filter(d,!is.na(AcceptedTaxonName))
 
-dtrait<-select(d,AcceptedTaxonName,Seed.dry.mass)
+dtrait<-select(d,AcceptedTaxonName,SLA)
 dtrait<-distinct(dtrait)
 library(tibble)
 
@@ -68,8 +68,8 @@ matricize<-function(x){
 dat<-matricize(d)
 
 
-M1<-hill_func_parti_pairwise(dat,dtrait,q=2)
-M2<-hill_taxa_parti_pairwise(dat,q=2)
+M1<-hill_func_parti_pairwise(dat,dtrait,q=0)
+M2<-hill_taxa_parti_pairwise(dat,q=0)
 
 
 M1<-select(M1,site1,site2,local_similarity)
@@ -84,8 +84,7 @@ M3<-left_join(M1,M2)
 #ggplot(M4,aes(Taxon,Funct))+geom_point(size=0.1)+geom_abline(intercept=0,slope=1,color="royalblue",size=1.5)+
  # ggthemes::theme_few()+ylim(0,1)
 
-dat<-ifelse(dat==0,0,1)
-m2<-functional.beta.pair(dat, dtrait, index.family="sorensen")
+
 
 
 coords<-select(d,Plot,Original.Lat,Original.Long)
@@ -114,15 +113,70 @@ M3b$class<-"trait"
 
 M5<-rbind(M3a,M3b)
 
-b<-ggplot()+
+ggplot()+
   geom_smooth(data=M5,aes(Distance,Similarity,linetype=class),method="glm",method.args = list(family = "quasibinomial"),size=1,alpha=0.2,color="black",fill="black")+
  
   ggthemes::theme_few()+scale_color_manual(values=c("navyblue","firebrick"))+scale_fill_manual(values=c("navyblue","firebrick"))+ theme(legend.position="top")
 
-a<-ggplot(M3,aes(Taxon,Funct))+geom_point(size=0.1)+geom_abline(intercept=0,slope=1,color="royalblue",size=1.5)+
+ggplot(M3,aes(Taxon,Funct))+geom_point(size=0.1)+geom_abline(intercept=0,slope=1,color="royalblue",size=1.5)+
   ggthemes::theme_few()
 
-jpeg("~/git/bioticHogs/desertsolitaire/sonoran_seedmass.jpeg")
-ggpubr::ggarrange(a,b)
-dev.off()
-save.image("~/git/bioticHogs/desertsolitaire/Sonoran.Rda")
+#jpeg("~/git/bioticHogs/desertsolitaire/sonoran_seedmass.jpeg")
+#ggpubr::ggarrange(a,b)
+#dev.off()
+#save.image("~/git/bioticHogs/highplainsdrifer/SLA.Rda")
+d.native<-d.native<-filter(d,NativeStatus!="I")
+
+numbers.n<-d.native %>%group_by(Plot)%>% count() 
+numbers.n<-filter(numbers.n,n>1)
+
+d.native<-filter(d.native,Plot %in% c(numbers.n$Plot))
+
+
+dat.native<-matricize(d.native)
+
+
+M1.native<-hill_func_parti_pairwise(dat.native,dtrait,q=0)
+M2.native<-hill_taxa_parti_pairwise(dat.native,q=0)
+
+M1.native<-select(M1.native,site1,site2,local_similarity)
+M2.native<-select(M2.native,site1,site2,local_similarity)
+colnames(M1.native)[3]<-"Funct"
+colnames(M2.native)[3]<-"Taxon"
+
+M3.native<-left_join(M1.native,M2.native)
+
+M3native.a<-select(M3.native,-Funct)
+M3native.b<-select(M3.native,-Taxon)
+colnames(M3native.a)[3]<-"Similarity"
+colnames(M3native.b)[3]<-"Similarity"
+
+M3native.a$class<-"taxomonic"
+M3native.b$class<-"trait"
+
+M5.native<-rbind(M3native.a,M3native.b)
+
+colnames(M5.native)[3]<-"Sim_native_only"
+
+M6<-left_join(M5.native,M5,by=c("site1","site2","class"))
+ggplot()+
+stat_smooth(data=M6,aes(Distance,Similarity,linetype=class),method="glm",method.args = list(family = "quasibinomial"),size=1,alpha=0.2,color="black",fill="black")
+
+range(M6$Sim_native_only)
+M6$Sim_native_only<-ifelse(M6$Sim_native_only<0,0,M6$Sim_native_only)
+
+M6native.a<-select(M6,-Similarity)
+M6native.b<-select(M6,-Sim_native_only)
+
+colnames(M6native.a)[3]<-"Similarity"
+
+
+M6native.a$comm<-"native only"
+M6native.b$comm<-"all species"
+
+M7<-rbind(M6native.a,M6native.b)  
+
+jpeg("~/git/bioticHogs/highplainsdrifer/sla_occ_highplains.jpeg")
+ggplot()+stat_smooth(data=M7,aes(Distance,Similarity,linetype=class,color=comm),method="glm",method.args = list(family = "quasibinomial"),size=1,alpha=0.2)+
+  ggthemes::theme_few()+scale_color_manual(values=c("black","skyblue"))
+dev.off()  

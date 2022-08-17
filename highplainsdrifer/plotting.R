@@ -100,6 +100,8 @@ mydf<-left_join(mydf,d.ref2)
 
 mydf<-filter(mydf,RelCov1!=RelCov2)
 mydf.high<-filter(mydf,Ecoregion=="High Plains")
+
+
 ggplot(mydf.high,aes(H))+geom_histogram(bins=200)+facet_wrap(~Ecoregion,scales="free")
 
 
