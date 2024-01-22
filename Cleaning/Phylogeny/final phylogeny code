@@ -1,0 +1,976 @@
+######CODE for making a species-level taxonomy translation table, trait database, and phylogeny for NCEAS working group on plant invasions
+######CODE should condense taxonomy for NPS Inventory and Monitoring, BLM-AIM, NEON, FIA, HAWAII datasets
+##adapted by Dan April 2023
+rm(list=ls()) 
+options(stringsAsFactors = FALSE)
+graphics.off()
+install.packages("ritis")
+library(ritis)
+
+setwd("~/Library/CloudStorage/OneDrive-UniversityofMassachusetts/Documents/PowellCenter/phylogeny_prep")#from MAc
+#####read in USDA plant codes translation table
+
+tax<-read.csv("usc.csv", as.is=T)
+tax$genus<-NA
+tax$epithet<-NA
+tax$inv_L48<-NA
+tax$inv_AK<-NA
+tax$inv_HI<-NA
+tax$inv_CAN<-NA
+
+for(i in 1:nrow(tax)){
+	print(i)
+	nam<-tax$Scientific.Name[i]
+	naml<-strsplit(nam, " ")
+	tax$genus[i]<-naml[[1]][1]
+	tax$epithet[i]<-naml[[1]][2]
+}
+
+###define native status by major region (L48, Hawaii, Alaska, Canada)
+tax$inv_L48[grep(pattern="L48.I.", x=tax$Native.Status)]<-"I"
+tax$inv_L48[grep(pattern="L48.N.", x=tax$Native.Status)]<-"N"
+tax$inv_AK[grep(pattern="AK.I.", x=tax$Native.Status)]<-"I"
+tax$inv_AK[grep(pattern="AK.N.", x=tax$Native.Status)]<-"N"
+tax$inv_HI[grep(pattern="HI.I.", x=tax$Native.Status)]<-"I"
+tax$inv_HI[grep(pattern="HI.N.", x=tax$Native.Status)]<-"N"
+tax$inv_CAN[grep(pattern="CAN.I.", x=tax$Native.Status)]<-"I"
+tax$inv_CAN[grep(pattern="CAN.N.", x=tax$Native.Status)]<-"N"
+
+
+
+###read in full dataset
+
+dat<-read.csv("..//Data/FULLDatabase_10272022.csv", as.is=T)
+
+##trim dataset to one record per species, and remove non-name columns
+undat<-dat[which(duplicated(dat$SpCode)==F),c('SpCode','AcceptedTaxonName')]
+
+###make genus and epithet columns
+undat$genus<-NA
+undat$epithet<-NA
+for(i in 1:nrow(undat)){
+	print(i)
+	nam<-undat$AcceptedTaxonName[i]
+	naml<-strsplit(nam, " ")
+	undat$genus[i]<-naml[[1]][1]
+	undat$epithet[i]<-naml[[1]][2]
+}
+
+###give all genera with unspecified species a "Genus sp" format, while retaining true NAs for nonsensical species codes
+undat$epithet[which(is.na(undat$genus)==F & is.na(undat$epithet)==T)]<-"sp"
+
+##now match species code with USDA database to find plant families
+undat$family<-NA
+for(i in 1:nrow(undat)){
+	print(i)
+	cod<-undat$SpCode[i]
+	if(cod%in%tax$Accepted.Symbol){
+		tcod<-tax[which(tax$Accepted.Symbol==cod),]
+		if(length(tcod$Family[which(is.na(tcod$Family)==F)])>0)  tcod<-tcod[which(is.na(tcod$Family)==F),]
+		undat$family[i]<-tcod$Family[1]
+	}
+}
+
+
+###for all of the ones that did not match..annoying...try matching species name
+for(i in 1:nrow(undat)){
+	print(i)
+	if(is.na(undat$family[i])==T){
+		nam<-undat$AcceptedTaxonName[i]
+		if(nam%in%tax$Scientific.Name){
+			tcod<-tax[which(tax$Scientific.Name==nam),]
+			if(length(tcod$Family[which(is.na(tcod$Family)==F)])>0)  tcod<-tcod[which(is.na(tcod$Family)==F),]
+			undat$family[i]<-tcod$Family[1]
+		}
+	}
+}
+
+undat$family[which(undat$family=="")]<-NA
+
+###for each of those that still just don't have family names in USDA plants at all, look it up on ITIS...USDA plants database is pretty screwy....
+for(i in 1:nrow(undat)){
+	print(i)
+	if(is.na(undat$family[i])==T & is.na(undat$genus[i])==F){
+		nam<-undat$AcceptedTaxonName[i]
+		aaa<-vector()
+		if(length(grep(" ",nam))>0) aaa<-search_scientific(nam)
+		if(length(aaa)>0){
+			num<-aaa$tsn[1]
+			accepted_names(num)->bbb
+			if(length(bbb)>0) num<-bbb$acceptedTsn[1]
+			ccc<-hierarchy_full(num)
+			undat$family[i]<-ccc$taxonname[which(ccc$rankname=="Family")]
+		}
+	}
+}
+
+length(undat$family[which(is.na(undat$family)==T & is.na(undat$genus)==F)])  #When i ran this its now 0 before was 3 when Ian did
+
+#undat$family[which(undat$SpCode=="KOCHI")]<-"Amaranthaceae"
+#undat$family[which(undat$SpCode=="NEAM")]<-"Amaranthaceae"
+#undat$family[which(undat$SpCode=="ABSH")]<-"Pinaceae"
+
+##chenopodiaceae is not recognized anymore except apparently in USDA plants, so changing it manually to Amaranthaceae
+undat$family[which(undat$family=="Chenopodiaceae")]<-"Amaranthaceae"
+undat$newtips<-paste(undat$species,undat$SpCode, sep="_")
+
+
+#####OK, so it looks like the taxonomy for the datasets is now complete, now cobble the phylogeny together
+
+
+
+###make phylogeny OF ALL  PLANTS IN DATASET 
+library(phytools)
+library(ape)
+undat$species<-paste(undat$genus, undat$epithet, sep="_")
+undat<-undat[which(is.na(undat$genus)==F),]
+undat_splevel<-undat[which(duplicated(undat$species)==F),]
+
+nam<-data.frame(SPECIES=as.character(undat_splevel$species), GENUS=as.character(undat_splevel$genus),FAMILY=as.character(undat_splevel$family))
+
+nrow(nam)
+
+
+tolower(nam$FAMILY)->nam$FAMILY
+# nam2<-nam[which(duplicated(nam$GENUS)==F),]
+# paste(nam2$FAMILY, nam2$GENUS, nam2$SPECIES, sep="/")->aaa
+# write.csv(aaa, file="for_phylomatic_genus.csv")
+
+###read in Zanne phylogeny that has been annotated from Webb's website (includes internal node names for families / other common groupings)
+###incidentally, I think phylogenies with non-annotated nodes could easily be annotated automatically if you have a fairly comprehensive list of taxa and corresponding groupings.  
+###It would simply be a matter of looping over a bunch of mrca calls to label the appropriate internal nodes.
+
+tr<-read.tree("zanne2014")
+tr_s<-read.tree("zanne2014")
+genus<-matrix(unlist(strsplit(tr$tip.label, "_")),ncol=2,byrow=T)[,1]
+
+##Find exact species matches, return vector of nodes that represent those matching tips
+spmat<-which(tr$tip.label%in%nam$SPECIES)
+spmat_nam<-tr$tip.label[which(tr$tip.label%in%nam$SPECIES)]
+length(spmat_nam)
+##4664 cases 
+###find genus matches among unmatched species
+nam_nospmatch<-nam[which(!(nam$SPECIES%in%tr$tip.label)),]
+nam_genmatch<-nam_nospmatch[which(nam_nospmatch$GENUS%in%genus),]
+nrow(nam_genmatch)
+##6082 cases
+##find family matches among unmatched genera
+nam_nogenmatch<-nam_nospmatch[which(!(nam_nospmatch$GENUS%in%genus)),]
+nam_fammatch<-nam_nogenmatch[which(nam_nogenmatch$FAMILY%in%tolower(tr$node.label)),]
+nrow(nam_fammatch)
+##534 cases 
+unmatched<-nam_nogenmatch[which(!(nam_nogenmatch$FAMILY%in%tolower(tr$node.label))),]
+nrow(unmatched)
+##617  (5%) These are all ferns and other non-seed plants that are not in the phylogeny.  --remove from dataset.
+
+
+
+###start by grafting polytomies to unmatched (genus) families
+##note that I am not assuming any phylogenetic structure based on genus names within the grafted taxa.  Just one big polytomy.
+unfam<-unique(nam_fammatch$FAMILY)
+for(i in 1:length(unfam)){
+	print(i)
+	ntip<-length(tr$tip.label)
+	clad<-extract.clade(tr, node=which(tolower(tr$node.label)==unfam[i])+ntip)
+	nodetotip<-diag(vcv.phylo(clad))[[1]]
+	taxa<-nam_fammatch$SPECIES[which(nam_fammatch$FAMILY==unfam[i])]
+	ntax<-length(taxa)
+	tip<-list(edge=matrix(nrow=ntax, c(rep((ntax+1),ntax),1:ntax)),
+		tip.label=taxa,
+		edge.length=rep(nodetotip,length(taxa)),
+		Nnode=1)
+	class(tip)<-"phylo"
+	tr<-bind.tree(tr,tip,where=which(tolower(tr$node.label)==unfam[i])+ntip, position=0)
+}
+tr_s2<-tr
+tr<-tr_s2
+###next graft polytomies to unmatched (species) genera
+##this does two things: 
+##1) for genera with multiple matches in the phylo, it finds the mrca of those matches and grafts the new taxa as a polytomy to that node.  Note that in cases where a genus in non-monophyletic, it will find the mrca that has non congeners included under it, and I think this is most appropriate.
+##2) for genera with only a single rep in the phylogeny, it grafts the new species as a polytomy along with that original taxon at 1/2 dist (arbitrary) from the parent node of that species.  This does assume that "genus" is somewhat meaningful.
+ungen<-unique(nam_genmatch$GENUS)
+for(i in 1:length(ungen)){
+	print(i)
+	ntip<-length(tr$tip.label)
+	genus<-matrix(unlist(strsplit(tr$tip.label, "_")),ncol=2,byrow=T)[,1]
+	matchtips<-which(genus==as.character(ungen[i]))
+	if(length(matchtips)>1){
+		mrcai<-getMRCA(tr, matchtips)
+		clad<-extract.clade(tr, node=mrcai)
+		nodetotip<-diag(vcv.phylo(clad))[[1]]
+		taxa<-nam_genmatch$SPECIES[which(nam_genmatch$GENUS==ungen[i])]
+		ntax<-length(taxa)
+		tip<-list(edge=matrix(nrow=ntax, c(rep((ntax+1),ntax),1:ntax)),
+			tip.label=taxa,
+			edge.length=rep(nodetotip,length(taxa)),
+			Nnode=1)
+		class(tip)<-"phylo"	
+		tr<-bind.tree(tr,tip,where=mrcai, position=0)
+	}
+	if(length(matchtips)==1){
+		parent<-getParent(tr,matchtips)
+		clad<-extract.clade(tr, node=parent)
+		nodetotip<-diag(vcv.phylo(clad))[[1]]
+		taxa<-nam_genmatch$SPECIES[which(nam_genmatch$GENUS==ungen[i])]
+		ntax<-length(taxa)
+		tip<-list(edge=matrix(nrow=ntax, c(rep((ntax+1),ntax),1:ntax)),
+			tip.label=taxa,
+			edge.length=rep(nodetotip/2,length(taxa)),
+			Nnode=1)
+		class(tip)<-"phylo"	
+		tr<-bind.tree(tr,tip,where=matchtips, position=nodetotip/2)
+	}
+}
+write.tree(tr, file="phylo_with_added_poly.tr")
+tr<-read.tree(file="phylo_with_added_poly.tr")
+
+###now add polytomies to tips to accomodate infraspecific names  graft polytomies at 1/2 branch length to species node (arbitrary)
+undat2<-undat[which(!(undat$species%in%unmatched$SPECIES)),]
+dups<-undat2[which(duplicated(undat2$species)==T),]
+undups<-dups[which(duplicated(dups$species)==F),]
+for(i in 1:nrow(undups)){
+	print(i)
+	matchtips<-which(tr$tip.label==as.character(undups$species[i]))
+	parent<-getParent(tr,matchtips)
+	clad<-extract.clade(tr, node=parent)
+	nodetotip<-diag(vcv.phylo(clad))[[1]]
+	taxa<-undat2$newtips[which(undat2$species==undups$species[i])]
+	ntax<-length(taxa)
+	tip<-list(edge=matrix(nrow=ntax, c(rep((ntax+1),ntax),1:ntax)),
+		tip.label=taxa,
+		edge.length=rep(nodetotip/2,length(taxa)),
+		Nnode=1)
+	class(tip)<-"phylo"	
+	tr<-bind.tree(tr,tip,where=matchtips, position=nodetotip/2)
+}
+##could probably switch the order of the droptip and the forced ultamatricizing in order to speed computation time...though not bad as is with a pretty big phylogeny.
+aaa<-branching.times(tr)
+compute.brtime(tr, aaa)->tr2
+
+
+
+tr3<-drop.tip(tr2, which(!(tr2$tip.label%in%c(undat2$species,undat2$newtips))))
+write.tree(tr3, "FINAL_PHYLOGENY_species_names.tr")
+
+
+###MAKE A PHYLO WITH USDA CODES AS TIPS FOR EASE OF USE
+
+tr3<-read.tree(file="FINAL_PHYLOGENY_species_names.tr")
+
+datfr<-data.frame(OLDTIPS=tr3$tip.label, NEWTIPS=NA)
+for(i in 1:nrow(datfr)){
+	print(i)
+	if(datfr$OLDTIPS[i]%in%undat$species) datfr$NEWTIPS[i]<-undat$SpCode[which(undat$species==datfr$OLDTIPS[i])]
+	if(datfr$OLDTIPS[i]%in%undat$newtips) datfr$NEWTIPS[i]<-undat$SpCode[which(undat$newtips==datfr$OLDTIPS[i])]
+}
+tr4<-tr3
+tr4$tip.label<-datfr$NEWTIPS
+tr5<-drop.tip(tr4, which(duplicated(tr4$tip.label)))
+write.tree(tr5, "FINAL_PHYLOGENY_SpCodes_Apr2023.tr")
+
+
+
+
+
+
+
+
+###JUNKYARD --OLD CODE OLD PROJECTS...
+
+write.csv(tax, "taxonomy_temp1.csv", row.names=F)
+
+tax<-read.csv("taxonomy_temp1.csv", as.is=T)
+	
+
+####match BLM codes to USDA codes
+
+tax<-read.csv("taxonomy_temp1.csv", as.is=T)
+blm<-read.csv("AIM_SpCode_orig.csv", as.is=T)
+
+blm$rejects<-F
+tax$blm_code<-NA
+for(i in 1:nrow(blm)){
+	namnew<-blm$newcode[i]
+	nam<-blm$code[i]
+	mat1<-tax[which(tax$Symbol==namnew),]
+	if(nrow(mat1)>0) tax$blm_code[which(tax$Symbol==namnew)]<-nam
+	if(nrow(mat1)==0){
+		mat1<-tax[which(tax$Synonym.Symbol==namnew),]
+		tax$blm_code[which(tax$Synonym.Symbol==namnew)]<-nam
+		if(nrow(mat1)>0) tax$blm_code[which(tax$Synonym.Symbol==namnew)]<-nam
+		if(nrow(mat1)==0) blm$rejects[i]<-T
+	}
+}
+
+
+rejects<-blm[which(blm$rejects==T),]  
+
+
+
+addon<-as.data.frame(matrix(NA, nrow=nrow(rejects),ncol=ncol(tax)))
+colnames(addon)<-colnames(tax)
+tax2<-rbind(tax, addon)  ##recursive beware!
+tax2$blm_code[(nrow(tax)+1):nrow(tax2)]<-rejects$code
+
+
+####6771 total blm codes; 1473 of them were unmatched with USDA plants codes, and most of these seem nonsensical (i.e. "BIGSHRUB" etc)
+
+
+write.csv(tax2, "taxonomy_temp2.csv",row.names=F)
+
+
+
+
+
+#####read in Hawaii codes
+tax<-read.csv("taxonomy_temp2.csv", as.is=T)
+hi<-read.csv("HI_SpCodes.csv", as.is=T)
+hi$genus<-NA
+hi$epithet<-NA
+hi$species<-NA
+hi$species_lower<-NA
+for(i in 1:nrow(hi)){
+	print(i)
+	nam<-hi$SciName[i]
+	naml<-strsplit(nam, " ")
+	hi$genus[i]<-naml[[1]][1]
+	hi$epithet[i]<-naml[[1]][2]
+	hi$species[i]<-paste(hi$genus[i], hi$epithet[i], sep=" ")
+	fl<-substring(hi$species[i],1,1)
+	ll<-substring(hi$species[i],2)
+	hi$species_lower[i]<-paste(tolower(fl),ll,sep="")
+}
+
+
+hi$rejects<-F
+tax$HICode<-NA
+tax$SciCode<-NA
+tax$HISpType<-NA
+tax$HI_species<-NA
+
+for(i in 1:nrow(hi)){
+	nam<-hi$species[i]
+	mat1<-tax[which(tax$Scientific.Name==nam),]
+	if(nrow(mat1)>0){
+		tax$HICode[which(tax$Scientific.Name==nam)]<-hi$HICode[i]
+		tax$SciCode[which(tax$Scientific.Name==nam)]<-hi$SciCode[i]
+		tax$HISpType[which(tax$Scientific.Name==nam)]<-hi$SpType[i]
+		tax$HI_species[which(tax$Scientific.Name==nam)]<-hi$species[i]
+	}
+	if(nrow(mat1)==0) hi$rejects[i]<-T
+}
+
+
+hi_r<-hi[which(hi$rejects==T),] 
+addon<-as.data.frame(matrix(NA, nrow=nrow(hi_r),ncol=ncol(tax)))
+colnames(addon)<-colnames(tax)
+tax2<-rbind(tax, addon)  ##recursive beware!
+tax2$HICode[(nrow(tax)+1):nrow(tax2)]<-hi_r$HICode
+tax2$SciCode[(nrow(tax)+1):nrow(tax2)]<-hi_r$SciCode
+tax2$HISpType[(nrow(tax)+1):nrow(tax2)]<-hi_r$SpType
+tax2$HI_species[(nrow(tax)+1):nrow(tax2)]<-hi_r$species
+tax2$genus[(nrow(tax)+1):nrow(tax2)]<-hi_r$genus
+tax2$epithet[(nrow(tax)+1):nrow(tax2)]<-hi_r$epithet
+write.csv(tax2, "taxonomy_temp3.csv", row.names=F)
+
+####1206 codes in the hawaii dataset; 281 species did not match species binomials listed in the USDA plants list.  Most of these are unresolved (i.e. Asplenium sp.)
+
+######add in FIA database
+fia<-read.csv("FIA_REF_SPECIES.csv", as.is=T)
+tax<-read.csv("taxonomy_temp3.csv", as.is=T)
+
+fia$rejects<-F
+tax$FIA_Code<-NA
+tax$FIA_Species<-NA
+tax$FIA_DRYWT_TO_GREENWT_CONVERSION<-NA
+
+
+for(i in 1:nrow(fia)){
+	print(i)
+	nam<-fia$SPECIES_SYMBOL[i]
+	mat1<-tax[which(tax$Accepted.Symbol==nam),]
+	if(nrow(mat1)>0){
+		tax$FIA_Code[which(tax$Accepted.Symbol==nam)]<-fia$SPECIES_SYMBOL[i]
+		tax$FIA_Species[which(tax$Accepted.Symbol==nam)]<-paste(fia$GENUS[i],fia$SPECIES[i],sep=" ")
+		tax$FIA_DRYWT_TO_GREENWT_CONVERSION[which(tax$Accepted.Symbol==nam)]<-fia$DRYWT_TO_GREENWT_CONVERSION[i]
+	}
+	if(nrow(mat1)==0){
+		mat1<-tax[which(tax$Synonym.Symbol==nam),]
+		if(nrow(mat1)>0){ 
+			tax$FIA_Code[which(tax$Synonym.Symbol==nam)]<-nam
+			tax$FIA_Species[which(tax$Synonym.Symbol==nam)]<-paste(fia$GENUS[i],fia$SPECIES[i],sep=" ")
+			tax$FIA_DRYWT_TO_GREENWT_CONVERSION[which(tax$Synonym.Symbol==nam)]<-fia$DRYWT_TO_GREENWT_CONVERSION[i]
+		}
+		if(nrow(mat1)==0) fia$rejects[i]<-T
+	}
+}
+
+fia_r<-fia[which(fia$rejects==T),] 
+
+fia_r$SP<-paste(fia_r$GENUS,fia_r$SPECIES,sep=" ")
+
+###find the couple of cases where usda codes dont match but latin name does.
+fia_r$r2<-F
+for(i in 1:nrow(fia_r)){
+	print(i)
+	nam<-fia_r$SP[i]
+	mat1<-tax[which(tax$Scientific.Name==nam),]
+	if(nrow(mat1)>0){
+		tax$FIA_Code[which(tax$Scientific.Name==nam)]<-fia_r$SPECIES_SYMBOL[i]
+		tax$FIA_Species[which(tax$Scientific.Name==nam)]<-fia_r$SP[i]
+		tax$FIA_DRYWT_TO_GREENWT_CONVERSION[which(tax$Scientific.Name==nam)]<-fia_r$DRYWT_TO_GREENWT_CONVERSION[i]
+	}
+	if(nrow(mat1)==0) fia_r$r2[i]<-T
+}
+
+###append the mismatches to the list
+fia_r2<-fia_r[which(fia_r$r2==T),]
+addon<-as.data.frame(matrix(NA, nrow=nrow(fia_r2),ncol=ncol(tax)))
+colnames(addon)<-colnames(tax)
+tax2<-rbind(tax, addon)  ##recursive beware!
+tax2$FIA_Code[(nrow(tax)+1):nrow(tax2)]<-fia_r2$SPECIES_SYMBOL
+tax2$FIA_Species[(nrow(tax)+1):nrow(tax2)]<-fia_r2$SP
+tax2$FIA_DRYWT_TO_GREENWT_CONVERSION[(nrow(tax)+1):nrow(tax2)]<-fia_r2$DRYWT_TO_GREENWT_CONVERSION
+
+
+###Of the 2668 species in FIA, 205 did not match.  All but 2 matched USDA codes, and the remaining two were matched to latin binomials
+
+
+write.csv(tax2, "taxonomy_temp4.csv", row.names=F)
+
+
+#######Enter NEON Data#################
+
+
+tax<-read.csv("taxonomy_temp4.csv", as.is=T)
+neon<-read.csv("neonAllSpeciesTaxonID.csv", as.is=T)
+
+neon$rejects<-F
+tax$neon_code<-NA
+for(i in 1:nrow(neon)){
+	nam<-neon$taxonID[i]
+	mat1<-tax[which(tax$Accepted.Symbol==nam),]
+	if(nrow(mat1)>0) tax$neon_code[which(tax$Accepted.Symbol==nam)]<-nam
+	if(nrow(mat1)==0){
+		mat1<-tax[which(tax$Synonym.Symbol==nam),]
+		if(nrow(mat1)>0) tax$neon_code[which(tax$Synonym.Symbol==nam)]<-nam
+		if(nrow(mat1)==0) neon$rejects[i]<-T
+	}
+}
+
+neon_r<-neon[which(neon$rejects==T),]
+addon<-as.data.frame(matrix(NA, nrow=nrow(neon_r),ncol=ncol(tax)))
+colnames(addon)<-colnames(tax)
+tax2<-rbind(tax, addon)  ##recursive beware!
+tax2$neon_code[(nrow(tax)+1):nrow(tax2)]<-neon_r$taxonID
+
+
+
+
+write.csv(tax2, "taxonomy_temp5.csv", row.names=F)
+
+###From NEON, there are 6201 records.  350 do not match usda codes, and they are mostly nonsensical (e.g. "2PLANT", etc)
+
+
+##########ENTER NPS data
+tax<-read.csv("taxonomy_temp5.csv", as.is=T)
+nps<-read.csv("NPS_species_list.csv", as.is=T)
+
+
+nps$rejects<-F
+tax$nps_code<-NA
+tax$nps_natstatus<-NA
+for(i in 1:nrow(nps)){
+	nam<-nps$CODE[i]
+	mat1<-tax[which(tax$Accepted.Symbol==nam),]
+	if(nrow(mat1)>0){
+		tax$nps_code[which(tax$Accepted.Symbol==nam)]<-nam
+		tax$nps_natstatus[which(tax$Accepted.Symbol==nam)]<-nps$STATUS[i]
+	}
+	if(nrow(mat1)==0){
+		mat1<-tax[which(tax$Synonym.Symbol==nam),]
+		if(nrow(mat1)>0){
+			tax$nps_code[which(tax$Synonym.Symbol==nam)]<-nam
+			tax$nps_natstatus[which(tax$Synonym.Symbol==nam)]<-nps$STATUS[i]
+		}
+		if(nrow(mat1)==0) nps$rejects[i]<-T
+	}
+}
+
+
+nps_r<-nps[which(nps$rejects==T),]
+addon<-as.data.frame(matrix(NA, nrow=nrow(nps_r),ncol=ncol(tax)))
+colnames(addon)<-colnames(tax)
+tax2<-rbind(tax, addon)  ##recursive beware!
+tax2$nps_code[(nrow(tax)+1):nrow(tax2)]<-nps_r$CODE
+tax2$nps_natstatus[(nrow(tax)+1):nrow(tax2)]<-nps_r$STATUS
+
+
+
+write.csv(tax2, "taxonomy_temp6.csv", row.names=F)
+
+###From NPS, there are 5310 records.  59 do not match usda codes, and they are mostly nonsensical (e.g. ".moss", etc)
+
+
+####enter in all of the new records from other NPS sites from Eve here 
+tax<-read.csv("taxonomy_temp6.csv", as.is=T)
+miss<-read.csv("AllMissing.csv", as.is=T)
+
+miss$rejects<-F
+for(i in 1:nrow(miss)){
+	nam<-miss$Species[i]
+	mat1<-tax[which(tax$Accepted.Symbol==nam),]
+	if(nrow(mat1)>0){
+		tax$nps_code[which(tax$Accepted.Symbol==nam)]<-nam
+	}
+	if(nrow(mat1)==0){
+		mat1<-tax[which(tax$Synonym.Symbol==nam),]
+		if(nrow(mat1)>0){
+			tax$nps_code[which(tax$Synonym.Symbol==nam)]<-nam
+		}
+		if(nrow(mat1)==0) miss$rejects[i]<-T
+	}
+}
+
+
+miss_r<-miss[which(miss$rejects==T),]
+addon<-as.data.frame(matrix(NA, nrow=nrow(miss_r),ncol=ncol(tax)))
+colnames(addon)<-colnames(tax)
+tax2<-rbind(tax, addon)  ##recursive beware!
+tax2$nps_code[(nrow(tax)+1):nrow(tax2)]<-miss_r$Species
+inMiss<-tax2[which(tax2$Accepted.Symbol%in%miss$Species),]
+###I have shortcutted re-rerunning the massive ITIS call for now by just quering the inMiss species later down
+
+########get rid of records of synonyms and species that do not appear in any of the cover datasets.  Get ITIS accepted nomenclature.
+write.csv(tax2, "taxonomy_temp6.1.csv", row.names=F)
+tax<-read.csv("taxonomy_temp6.1.csv", as.is=T)
+
+
+rem<-which(is.na(tax$blm_code)==T & is.na(tax$HICode)==T & is.na(tax$FIA_Code)==T & is.na(tax$neon_code)==T & is.na(tax$nps_code)==T)
+
+tax_red<-tax[-rem,]
+
+
+tax_red$kingdom<-NA
+tax_red$realfamily<-NA
+tax_red$tsn<-NA
+tax_red$realname<-NA
+
+##been changing the number to check on it while it runs for 6 hrs... change it back to rerun if you need to. 
+##This also crashes on a few (3 so far) rows for unresolved reasons.  I skipped these rows.
+for(i in 1:nrow(tax_red)){
+	print(i)
+	aaa<-vector()
+	if(length(grep(" ",tax_red$Scientific.Name[i]))>0) aaa<-search_scientific(tax_red$Scientific.Name[i])
+	if(length(aaa)>0){
+		num<-aaa$tsn[1]
+		accepted_names(num)->bbb
+		if(length(bbb)>0){
+			num<-bbb$acceptedTsn[1]
+			tax_red$tsn[i]<-num
+			bbb<-hierarchy_full(num)
+			tax_red$kingdom[i]<-bbb$taxonname[which(bbb$rankname=="Kingdom")]
+			tax_red$realfamily[i]<-bbb$taxonname[which(bbb$rankname=="Family")]
+			if(length(bbb$taxonname[which(bbb$rankname=="Species")])) tax_red$realname[i]<-bbb$taxonname[which(bbb$rankname=="Species")]
+		}
+	}
+	if(length(aaa)==0){
+		if(length(grep(" ",tax_red$FIA_Species[i]))>0) aaa<-search_scientific(tax_red$FIA_Species[i])
+		if(length(aaa)>0){
+			num<-aaa$tsn[1]
+			accepted_names(num)->bbb
+			if(length(bbb)>0) num<-bbb$acceptedTsn[1]
+			tax_red$tsn[i]<-num
+			bbb<-hierarchy_full(num)
+			tax_red$kingdom[i]<-bbb$taxonname[which(bbb$rankname=="Kingdom")]
+			tax_red$realfamily[i]<-bbb$taxonname[which(bbb$rankname=="Family")]
+			tax_red$realname[i]<-bbb$taxonname[which(bbb$rankname=="Species")]
+		}
+		if(length(aaa)==0){
+			if(length(grep(" ",tax_red$HI_species[i]))>0) aaa<-search_scientific(tax_red$HI_species[i])
+			if(length(aaa)>0){
+				num<-aaa$tsn[1]
+				accepted_names(num)->bbb
+				if(length(bbb)>0) num<-bbb$acceptedTsn[1]
+				tax_red$tsn[i]<-num
+				bbb<-hierarchy_full(num)
+				tax_red$kingdom[i]<-bbb$taxonname[which(bbb$rankname=="Kingdom")]
+				tax_red$realfamily[i]<-bbb$taxonname[which(bbb$rankname=="Family")]
+				tax_red$realname[i]<-bbb$taxonname[which(bbb$rankname=="Species")]
+			}
+		}
+	}
+}
+
+
+write.csv(tax_red, "taxonomy_temp6.5.csv", row.names=F)
+
+allnam<-tax_red$realname[which(is.na(tax_red$realname)==F)]
+allnam<-unique(allnam)
+write.csv(allnam,"unique_species_names.csv")
+
+
+tax<-read.csv("taxonomy_temp6.5.csv",as.is=T)
+###define native status by major region (L48, Hawaii, Alaska, Canada)
+
+tax<-inMiss
+
+tax$inv_L48[grep(pattern="L48.I.", x=tax$Native.Status)]<-"I"
+tax$inv_L48[grep(pattern="L48.N.", x=tax$Native.Status)]<-"N"
+tax$inv_L48[grep(pattern="L48.I,N.", x=tax$Native.Status)]<-"NI"
+tax$inv_L48[grep(pattern="L48.NI", x=tax$Native.Status)]<-"NI"
+#tax$inv_L48[grep(pattern="L48.I?", x=tax$Native.Status)]<-"I"
+#tax$inv_L48[grep(pattern="L48.N?", x=tax$Native.Status)]<-"N"
+
+tax$inv_AK[grep(pattern="AK.I.", x=tax$Native.Status)]<-"I"
+tax$inv_AK[grep(pattern="AK.N.", x=tax$Native.Status)]<-"N"
+tax$inv_AK[grep(pattern="AK.I,N.", x=tax$Native.Status)]<-"NI"
+tax$inv_AK[grep(pattern="AK.NI", x=tax$Native.Status)]<-"NI"
+#tax$inv_AK[grep(pattern="AK.I?", x=tax$Native.Status)]<-"I"
+#tax$inv_AK[grep(pattern="AK.N?", x=tax$Native.Status)]<-"N"
+
+
+tax$inv_HI[grep(pattern="HI.I.", x=tax$Native.Status)]<-"I"
+tax$inv_HI[grep(pattern="HI.N.", x=tax$Native.Status)]<-"N"
+tax$inv_HI[grep(pattern="HI.I,N.", x=tax$Native.Status)]<-"NI"
+tax$inv_HI[grep(pattern="HI.NI", x=tax$Native.Status)]<-"NI"
+#tax$inv_HI[grep(pattern="HI.I?", x=tax$Native.Status)]<-"I"
+#tax$inv_HI[grep(pattern="HI.N?", x=tax$Native.Status)]<-"N"
+
+
+tax$inv_CAN[grep(pattern="CAN.I.", x=tax$Native.Status)]<-"I"
+tax$inv_CAN[grep(pattern="CAN.N.", x=tax$Native.Status)]<-"N"
+tax$inv_CAN[grep(pattern="CAN.I,N.", x=tax$Native.Status)]<-"NI"
+tax$inv_CAN[grep(pattern="CAN.NI", x=tax$Native.Status)]<-"NI"
+#tax$inv_CAN[grep(pattern="CAN.I?", x=tax$Native.Status)]<-"I"
+#tax$inv_CAN[grep(pattern="CAN.N?", x=tax$Native.Status)]<-"N"
+tax$GrowthForm<-NA
+tax$Growth.Habit[which(is.na(tax$Growth.Habit)==T)]<-""
+for(i in 1:nrow(tax)){
+	if(nchar(tax$Growth.Habit[i])>0){ 
+		tax$GrowthForm[i]<-strsplit(tax$Growth.Habit[i], " ")[[1]][1]
+		tax$GrowthForm[i]<-gsub(",","",tax$GrowthForm[i])
+	}
+}
+
+write.csv(tax, "taxonomy_temp7.csv", row.names=F)
+
+
+
+tax<-read.csv("taxonomy_temp7.csv",as.is=T)
+
+###collapse out unused synonyms
+unUSDA<-unique(tax$Accepted.Symbol)
+unUSDA<-unUSDA[which(is.na(unUSDA)==F)]
+tax$DEL<-F
+for(i in 1:length(unUSDA)){
+	usi<-unUSDA[i]
+	taxi<-tax[which(tax$Accepted.Symbol==usi),]
+	if(nrow(taxi)>1){
+		vec<-rep(1,5)
+		vec[1]<-length(unique(taxi$blm_code[which(is.na(taxi$blm_code)==F)]))
+		vec[2]<-length(unique(taxi$HICode[which(is.na(taxi$HICode)==F)]))
+		vec[3]<-length(unique(taxi$FIA_Code[which(is.na(taxi$FIA_Code)==F)]))
+		vec[4]<-length(unique(taxi$neon_code[which(is.na(taxi$neon_code)==F)]))
+		vec[5]<-length(unique(taxi$nps_code[which(is.na(taxi$nps_code)==F)]))
+		if(max(vec)<2){
+			tax$DEL[which(tax$Accepted.Symbol==usi & tax$Symbol!=tax$Accepted.Symbol)]<-T
+			if(length(unique(taxi$blm_code[which(is.na(taxi$blm_code)==F)]))>0) tax$blm_code[which(tax$Accepted.Symbol==usi)]<-unique(taxi$blm_code[which(is.na(taxi$blm_code)==F)])
+			if(length(unique(taxi$HICode[which(is.na(taxi$HICode)==F)]))>0) tax$HICode[which(tax$Accepted.Symbol==usi)]<-unique(taxi$HICode[which(is.na(taxi$HICode)==F)])
+			if(length(unique(taxi$FIA_Code[which(is.na(taxi$FIA_Code)==F)]))>0) tax$FIA_Code[which(tax$Accepted.Symbol==usi)]<-unique(taxi$FIA_Code[which(is.na(taxi$FIA_Code)==F)])
+			if(length(unique(taxi$neon_code[which(is.na(taxi$neon_code)==F)]))>0) tax$neon_code[which(tax$Accepted.Symbol==usi)]<-unique(taxi$neon_code[which(is.na(taxi$neon_code)==F)])
+			if(length(unique(taxi$nps_code[which(is.na(taxi$nps_code)==F)]))>0) tax$nps_code[which(tax$Accepted.Symbol==usi)]<-unique(taxi$nps_code[which(is.na(taxi$nps_code)==F)])
+			if(length(unique(taxi$GrowthForm[which(is.na(taxi$GrowthForm)==F)]))>0) tax$GrowthForm[which(tax$Accepted.Symbol==usi)]<-unique(taxi$GrowthForm[which(is.na(taxi$GrowthForm)==F)])
+			if(length(unique(taxi$inv_L48[which(is.na(taxi$inv_L48)==F)]))>0) tax$inv_L48[which(tax$Accepted.Symbol==usi)]<-unique(taxi$inv_L48[which(is.na(taxi$inv_L48)==F)])
+			if(length(unique(taxi$inv_AK[which(is.na(taxi$inv_AK)==F)]))>0) tax$inv_AK[which(tax$Accepted.Symbol==usi)]<-unique(taxi$inv_AK[which(is.na(taxi$inv_AK)==F)])
+			if(length(unique(taxi$inv_HI[which(is.na(taxi$inv_HI)==F)]))>0) tax$inv_HI[which(tax$Accepted.Symbol==usi)]<-unique(taxi$inv_HI[which(is.na(taxi$inv_HI)==F)])
+		}
+	}
+}
+tax<-tax[which(tax$DEL==F),]
+
+
+for(i in 7662:nrow(tax)){
+	print(i)
+	if(is.na(tax$realname[i])==T){
+		aaa<-vector()
+		if(length(grep(" ",tax$Scientific.Name[i]))>0){
+			aaa<-search_scientific(tax$Scientific.Name[i])
+			if(length(aaa)>0){
+				num<-aaa$tsn[1]
+				accepted_names(num)->bbb
+				if(length(bbb)>0) num<-bbb$acceptedTsn[1]
+				tax$tsn[i]<-num
+				bbb<-hierarchy_full(num)
+				tax$kingdom[i]<-bbb$taxonname[which(bbb$rankname=="Kingdom")]
+				if(length(bbb$rankname[which(bbb$rankname=="Family")])>0) tax$realfamily[i]<-bbb$taxonname[which(bbb$rankname=="Family")]
+				if(length(bbb$taxonname[which(bbb$rankname=="Species")])>0) tax$realname[i]<-bbb$taxonname[which(bbb$rankname=="Species")]
+				
+			}
+		}
+	}
+}
+
+tax$bestname<-tax$realname
+for(i in 1:nrow(tax)){
+	if(is.na(tax$bestname[i])==T){
+		tax$bestname[i]<-tax$Scientific.Name[i]
+	}
+}
+
+
+
+write.csv(tax, "taxonomy_temp8.csv", row.names=F)
+	
+tax<-read.csv("taxonomy_temp8.csv",as.is=T)
+unUSDA<-unique(tax$Accepted.Symbol)
+unUSDA<-unUSDA[which(is.na(unUSDA)==F)]
+
+
+for(i in 1:length(unUSDA)){
+	usi<-unUSDA[i]
+	taxi<-tax[which(tax$Accepted.Symbol==usi),]
+	if(nrow(taxi)>1){
+		if(length(unique(taxi$GrowthForm[which(is.na(taxi$GrowthForm)==F)]))>0) tax$GrowthForm[which(tax$Accepted.Symbol==usi)]<-unique(taxi$GrowthForm[which(is.na(taxi$GrowthForm)==F)])
+		if(length(unique(taxi$inv_L48[which(is.na(taxi$inv_L48)==F)]))>0) tax$inv_L48[which(tax$Accepted.Symbol==usi)]<-unique(taxi$inv_L48[which(is.na(taxi$inv_L48)==F)])
+		if(length(unique(taxi$inv_AK[which(is.na(taxi$inv_AK)==F)]))>0) tax$inv_AK[which(tax$Accepted.Symbol==usi)]<-unique(taxi$inv_AK[which(is.na(taxi$inv_AK)==F)])
+		if(length(unique(taxi$inv_HI[which(is.na(taxi$inv_HI)==F)]))>0) tax$inv_HI[which(tax$Accepted.Symbol==usi)]<-unique(taxi$inv_HI[which(is.na(taxi$inv_HI)==F)])
+		if(length(unique(taxi$inv_CAN[which(is.na(taxi$inv_CAN)==F)]))>0) tax$inv_CAN[which(tax$Accepted.Symbol==usi)]<-unique(taxi$inv_CAN[which(is.na(taxi$inv_CAN)==F)])
+	}
+}
+taxm<-tax
+write.csv(tax, "taxonomy_temp9.csv", row.names=F)
+tax<-read.csv("taxonomy_temp9.csv", as.is=T)
+
+###messing with new taxa from Eve here.
+inMiss$kingdom<-NA
+inMiss$realfamily<-NA
+inMiss$tsn<-NA
+inMiss$realname<-NA
+
+##been changing the number to check on it while it runs for 6 hrs... change it back to rerun if you need to. 
+##This also crashes on a few (3 so far) rows for unresolved reasons.  I skipped these rows.
+inMiss<-inMiss[which(inMiss$Accepted.Symbol==inMiss$Symbol),]
+for(i in 2161:nrow(inMiss)){
+	print(i)
+	aaa<-vector()
+	if(length(grep(" ",inMiss$Scientific.Name[i]))>0) aaa<-search_scientific(inMiss$Scientific.Name[i])
+	if(length(aaa)>0){
+		num<-aaa$tsn[1]
+		accepted_names(num)->bbb
+		if(length(bbb)>0){
+			num<-bbb$acceptedTsn[1]
+			inMiss$tsn[i]<-num
+			bbb<-hierarchy_full(num)
+			inMiss$kingdom[i]<-bbb$taxonname[which(bbb$rankname=="Kingdom")]
+			inMiss$realfamily[i]<-bbb$taxonname[which(bbb$rankname=="Family")]
+			if(length(bbb$taxonname[which(bbb$rankname=="Species")])) inMiss$realname[i]<-bbb$taxonname[which(bbb$rankname=="Species")]
+		}
+	}
+	if(length(aaa)==0){
+		if(length(grep(" ",inMiss$FIA_Species[i]))>0) aaa<-search_scientific(inMiss$FIA_Species[i])
+		if(length(aaa)>0){
+			num<-aaa$tsn[1]
+			accepted_names(num)->bbb
+			if(length(bbb)>0) num<-bbb$acceptedTsn[1]
+			inMiss$tsn[i]<-num
+			bbb<-hierarchy_full(num)
+			inMiss$kingdom[i]<-bbb$taxonname[which(bbb$rankname=="Kingdom")]
+			inMiss$realfamily[i]<-bbb$taxonname[which(bbb$rankname=="Family")]
+			inMiss$realname[i]<-bbb$taxonname[which(bbb$rankname=="Species")]
+		}
+		if(length(aaa)==0){
+			if(length(grep(" ",inMiss$HI_species[i]))>0) aaa<-search_scientific(inMiss$HI_species[i])
+			if(length(aaa)>0){
+				num<-aaa$tsn[1]
+				accepted_names(num)->bbb
+				if(length(bbb)>0) num<-bbb$acceptedTsn[1]
+				inMiss$tsn[i]<-num
+				bbb<-hierarchy_full(num)
+				inMiss$kingdom[i]<-bbb$taxonname[which(bbb$rankname=="Kingdom")]
+				inMiss$realfamily[i]<-bbb$taxonname[which(bbb$rankname=="Family")]
+				inMiss$realname[i]<-bbb$taxonname[which(bbb$rankname=="Species")]
+			}
+		}
+	}
+}
+
+
+
+
+
+
+
+
+
+###make phylogeny OF ALL  PLANTS IN DATASET 
+library(phytools)
+library(ape)
+
+
+tax<-read.csv("taxonomy_temp8.csv",as.is=T)
+tax$realgenus<-NA
+for(i in 1:nrow(tax)){
+	if(length(grep(" ",tax$bestname[i]))>0) tax$realgenus[i]<-strsplit(tax$bestname[i], " ")[[1]][1]
+}
+
+tax$realgenus[which(is.na(tax$realgenus)==T)]<-tax$bestname[which(is.na(tax$realgenus)==T)]
+tax$realfamily[which(is.na(tax$realfamily)==T)]<-tax$Family[which(is.na(tax$realfamily)==T)]
+pl<-tax[which(is.na(tax$bestname)==F),]
+pl2<-pl[which(duplicated(pl$bestname)==F),]
+	
+	
+nam<-data.frame(SPECIES=as.character(pl2$bestname), GENUS=as.character(pl2$realgenus),FAMILY=as.character(pl2$realfamily))
+gsub(" ", "_",nam$SPECIES)->nam$SPECIES
+
+
+
+tolower(nam$FAMILY)->nam$FAMILY
+# nam2<-nam[which(duplicated(nam$GENUS)==F),]
+# paste(nam2$FAMILY, nam2$GENUS, nam2$SPECIES, sep="/")->aaa
+# write.csv(aaa, file="for_phylomatic_genus.csv")
+
+###read in Zanne phylogeny that has been annotated from Webb's website (includes internal node names for families / other common groupings)
+###incidentally, I think phylogenies with non-annotated nodes could easily be annotated automatically if you have a fairly comprehensive list of taxa and corresponding groupings.  
+###It would simply be a matter of looping over a bunch of mrca calls to label the appropriate internal nodes.
+
+tr<-read.tree("zanne2014")
+tr_s<-read.tree("zanne2014")
+genus<-matrix(unlist(strsplit(tr$tip.label, "_")),ncol=2,byrow=T)[,1]
+
+##Find exact species matches, return vector of nodes that represent those matching tips
+spmat<-which(tr$tip.label%in%nam$SPECIES)
+spmat_nam<-tr$tip.label[which(tr$tip.label%in%nam$SPECIES)]
+length(spmat_nam)
+##3781 cases (47%)
+###find genus matches among unmatched species
+nam_nospmatch<-nam[which(!(nam$SPECIES%in%tr$tip.label)),]
+nam_genmatch<-nam_nospmatch[which(nam_nospmatch$GENUS%in%genus),]
+nrow(nam_genmatch)
+##3738 cases(47%)
+##find family matches among unmatched genera
+nam_nogenmatch<-nam_nospmatch[which(!(nam_nospmatch$GENUS%in%genus)),]
+nam_fammatch<-nam_nogenmatch[which(nam_nogenmatch$FAMILY%in%tolower(tr$node.label)),]
+##367 cases (5%)
+unmatched<-nam_nogenmatch[which(!(nam_nogenmatch$FAMILY%in%tolower(tr$node.label))),]
+##131  (1%) These are all ferns and other non-seed plants that are not in the phylogeny.  --remove from dataset.
+
+
+
+###start by grafting polytomies to unmatched (genus) families
+##note that I am not assuming any phylogenetic structure based on genus names within the grafted taxa.  Just one big polytomy.
+unfam<-unique(nam_fammatch$FAMILY)
+for(i in 1:length(unfam)){
+	print(i)
+	ntip<-length(tr$tip.label)
+	clad<-extract.clade(tr, node=which(tolower(tr$node.label)==unfam[i])+ntip)
+	nodetotip<-diag(vcv.phylo(clad))[[1]]
+	taxa<-nam_fammatch$SPECIES[which(nam_fammatch$FAMILY==unfam[i])]
+	ntax<-length(taxa)
+	tip<-list(edge=matrix(nrow=ntax, c(rep((ntax+1),ntax),1:ntax)),
+		tip.label=taxa,
+		edge.length=rep(nodetotip,length(taxa)),
+		Nnode=1)
+	class(tip)<-"phylo"
+	tr<-bind.tree(tr,tip,where=which(tolower(tr$node.label)==unfam[i])+ntip, position=0)
+}
+tr_s2<-tr
+tr<-tr_s2
+###next graft polytomies to unmatched (species) genera
+##this does two things: 
+##1) for genera with multiple matches in the phylo, it finds the mrca of those matches and grafts the new taxa as a polytomy to that node.  Note that in cases where a genus in non-monophyletic, it will find the mrca that has non congeners included under it, and I think this is most appropriate.
+##2) for genera with only a single rep in the phylogeny, it grafts the new species as a polytomy along with that original taxon at 1/2 dist (arbitrary) from the parent node of that species.  This does assume that "genus" is somewhat meaningful.
+ungen<-unique(nam_genmatch$GENUS)
+for(i in 1:length(ungen)){
+	print(i)
+	ntip<-length(tr$tip.label)
+	genus<-matrix(unlist(strsplit(tr$tip.label, "_")),ncol=2,byrow=T)[,1]
+	matchtips<-which(genus==as.character(ungen[i]))
+	if(length(matchtips)>1){
+		mrcai<-getMRCA(tr, matchtips)
+		clad<-extract.clade(tr, node=mrcai)
+		nodetotip<-diag(vcv.phylo(clad))[[1]]
+		taxa<-nam_genmatch$SPECIES[which(nam_genmatch$GENUS==ungen[i])]
+		ntax<-length(taxa)
+		tip<-list(edge=matrix(nrow=ntax, c(rep((ntax+1),ntax),1:ntax)),
+			tip.label=taxa,
+			edge.length=rep(nodetotip,length(taxa)),
+			Nnode=1)
+		class(tip)<-"phylo"	
+		tr<-bind.tree(tr,tip,where=mrcai, position=0)
+	}
+	if(length(matchtips)==1){
+		parent<-getParent(tr,matchtips)
+		clad<-extract.clade(tr, node=parent)
+		nodetotip<-diag(vcv.phylo(clad))[[1]]
+		taxa<-nam_genmatch$SPECIES[which(nam_genmatch$GENUS==ungen[i])]
+		ntax<-length(taxa)
+		tip<-list(edge=matrix(nrow=ntax, c(rep((ntax+1),ntax),1:ntax)),
+			tip.label=taxa,
+			edge.length=rep(nodetotip/2,length(taxa)),
+			Nnode=1)
+		class(tip)<-"phylo"	
+		tr<-bind.tree(tr,tip,where=matchtips, position=nodetotip/2)
+	}
+}
+write.tree(tr, file="phylo_with_added_poly.tr")
+tr<-read.tree(file="phylo_with_added_poly.tr")
+
+
+write.tree(tr, file="phylo_with_added_poly.tr")
+
+##could probably switch the order of the droptip and the forced ultamatricizing in order to speed computation time...though not bad as is with a pretty big phylogeny.
+aaa<-branching.times(tr)
+compute.brtime(tr, aaa)->tr2
+tr3<-drop.tip(tr2, which(!(tr2$tip.label%in%nam$SPECIES)))
+write.tree(tr3, "FINAL_PHYLOGENY.tr")
+
+
+
+
+
+
+##########ENTER invasiveness data
+
+nps<-read.csv("NPS_species_list.csv", as.is=T)
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#####run all names through ITIS for updated taxonomy
+###optimize code by first getting rid of synonymous USDA codes
+usda_code<-read.csv("USDA_plants_clean.csv", as.is=T)
+usda_code$kingdom<-NA
+usda_code$family<-NA
+usda_code$tsn<-NA
+usda_code$realname<-NA
+
+for(i in 1:nrow(usda_codes)){
+	print(i)
+	aaa<-search_scientific(usda_code$USDA_SPECIES[i])
+	if(length(aaa)>0){
+		num<-aaa$tsn[1]
+		accepted_names(num)->bbb
+		if(length(bbb)>0) num<-bbb$acceptedTsn[1]
+		usda_code$tsn[i]<-num
+		bbb<-hierarchy_full(num)
+		usda_code$kingdom[i]<-bbb$taxonname[which(bbb$rankname=="Kingdom")]
+		usda_code$family[i]<-bbb$taxonname[which(bbb$rankname=="Family")]
+		usda_code$realname[i]<-bbb$taxonname[which(bbb$rankname=="Species")]
+	}
+}

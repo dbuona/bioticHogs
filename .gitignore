@@ -2,3 +2,4 @@
 *.Rda
 .DS_Store
 highplainsdrifer/highplainsdrifterdata.csv
+*.csv
