@@ -74,6 +74,74 @@ toy.mod.tax0.slope<- brm(
   chains = 4, iter = 2000, warmup = 1000,
   cores = 4, seed = 1234,backend = "cmdstanr") ### 4 divergent transitions, probably up the adapt_delta will handle
 
+####try seperate models with diatance and 0
+tax1.small.native<-filter(tax1.small,status=="native")
+tax1.small.invaded<-filter(tax1.small,status!="native")
+table(tax1.small.native$NA_L3NAME)
+
+sorock<-filter(tax1.small.native,NA_L3NAME=="Middle Rockies")
+
+sorock$binsim<-as.integer(sorock$local_similarity)
+get_prior(local_similarity ~ s(Distance)+1,
+              data = sorock)
+          
+
+sorock.native.lm<- lm(local_similarity ~ Distance+1,
+                    data = sorock)
+
+
+lm_shift_up <- glm(local_similarity ~ Distance +0 + 
+                    offset(rep(1, nrow(sorock))),family="quasibinomial", 
+                  data=sorock)
+
+summary(lm_shift_up)
+
+intercept <- 1.0
+fit <- glm(I(local_similarity - intercept) ~ 0 + Distance, sorock,family="Gamma")
+summary(fit)
+
+
+     
+  abline(intercept, coef(fit))
+
+sorock.native<- brm(local_similarity ~ Distance+0,
+  data = sorock,
+  init = 1,
+  chains = 4, iter = 2000, warmup = 1000,
+  cores = 4, seed = 1234,backend = "cmdstanr") 
+
+sorock %>%
+  add_epred_draws(sorock.native, 
+                  ndraws=10, 
+                  allow_new_levels = TRUE) %>%
+  ggplot(aes(x = Distance, 
+             y = local_similarity)) +
+  geom_point(data = sorock, color="black",size=0.01)
+
+
+
+fit2<-brms::brm(bf(local_similarity ~ 
+                     exp(-a1 * Distance) + b1,
+                   a1 + b1~1 , nl=TRUE), 
+                data = sorock,
+                prior = c(
+                  prior(normal(0, 1), nlpar = "a1"),
+                  prior(normal(0, 1), nlpar = "b1")), 
+                chains=4, 
+                cores=4, 
+                warmup = 1000,
+                iter = 2000)
+
+
+m2 <- brm(bf(local_similarity ~ s(Distance)),
+          data = sorock, family = gaussian(), cores = 4, seed = 17,
+          iter = 4000, warmup = 1000, thin = 10, refresh = 0)
+
+
+
+
+
+
 save.image("Input/L3/L3toymodels_wslope.Rda") 
 
 ##posterior predictions
@@ -91,10 +159,13 @@ new.data5<-data.frame(NA_L3NAME=rep(unique(tax2.small$NA_L3NAME),each=24))
 new.data4<-data.frame(NA_L3NAME=rep(unique(tax0.small$NA_L3NAME),each=24))
 
 new.data6<-data.frame(NA_L3NAME=rep(unique(phy1.small$NA_L3NAME),each=24))
+new.data7<-data.frame(NA_L3NAME=rep(unique(sla1.small$NA_L3NAME),each=24))
+
 new.data3<-cbind(new.data3,new.data2)
 new.data4<-cbind(new.data4,new.data2)
 new.data5<-cbind(new.data5,new.data2)
 new.data6<-cbind(new.data6,new.data2)
+new.data7<-cbind(new.data7,new.data2)
 #### predictions
 toy_pred.tax1.slope<- toy.mod.tax1.slope %>% 
   epred_draws(newdata =new.data3,ndraws = 100,re_formula = ~(status*logDist|NA_L3NAME))
@@ -107,6 +178,10 @@ toy_pred.tax2.slope<- toy.mod.tax2.slope %>%
 
 toy_pred.phy1.slope<- toy.mod.phy1.slope %>% 
   epred_draws(newdata =new.data6,ndraws = 100,re_formula = ~(status*logDist|NA_L3NAME))
+
+toy_pred.sla1.slope<- toy.mod.sla1.slope %>% 
+  epred_draws(newdata =new.data7,ndraws = 20,re_formula = ~(status*logDist|NA_L3NAME))
+
 
 
 
@@ -135,6 +210,8 @@ toy_pred.tax2.slope$grouper<-paste(toy_pred.tax2.slope$NA_L3NAME,toy_pred.tax2.s
 
 
 toy_pred.phy1.slope$grouper<-paste(toy_pred.phy1.slope$NA_L3NAME,toy_pred.phy1.slope$status,toy_pred.phy1.slope$.draw)
+toy_pred.sla1.slope$grouper<-paste(toy_pred.sla1.slope$NA_L3NAME,toy_pred.sla1.slope$status,toy_pred.sla1.slope$.draw)
+
 
 ##group em
 toy_pred.tax1$grouper<-paste(toy_pred.tax1$status,toy_pred.tax1$.draw)
@@ -238,6 +315,14 @@ ggplot()+#geom_point(data=taxIN.small,aes(x=logDist,y=local_similarity,color=sta
   geom_smooth(data=toy_pred.phy1.slope,method="gam", formula = y ~ s(x, bs = "cs", k=9),aes(x=logDist,y=.epred,color=status))+ylab("similarity")+xlab("log(Distance)")+
   ggthemes::theme_few(base_size = 12)+scale_color_manual("invasion status",values=c("navyblue","forestgreen"),labels=c("invasive","native"))+
   facet_wrap(~NA_L3NAME,scale="free_y")
+
+ggplot()+#geom_point(data=taxIN.small,aes(x=logDist,y=local_similarity,color=status),size=.01,alpha=0.2)+
+  geom_line(data=toy_pred.sla1.slope,aes(x=logDist,y=.epred,color=status,group=grouper),size=0.01)+
+  geom_smooth(data=toy_pred.sla1.slope,method="gam", formula = y ~ s(x, bs = "cs", k=9),aes(x=logDist,y=.epred,color=status))+ylab("similarity")+xlab("log(Distance)")+
+  ggthemes::theme_few(base_size = 12)+scale_color_manual("invasion status",values=c("navyblue","forestgreen"),labels=c("invasive","native"))+
+  facet_wrap(~NA_L3NAME,scale="free_y")
+
+
 
 
 jpeg("Plots/tax_L3s.jpeg",width=8, height=8, units = 'in', res=200)
