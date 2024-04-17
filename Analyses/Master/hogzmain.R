@@ -218,8 +218,21 @@ phydat.nat$n_scale<-phydat.nat$n/max(phydat.nat$n)
 taxdatq1<-filter(taxdat,q==1)
 phydatq1<-filter(phydat,q==1)
 
+taxdatq0<-filter(taxdat,q==0)
+phydatq0<-filter(phydat,q==0)
+
+taxdatq2<-filter(taxdat,q==2)
+phydatq2<-filter(phydat,q==2)
+
 nattaxdatq1<-filter(taxdat.nat,q==1)
 natphydatq1<-filter(phydat.nat,q==1)
+
+nattaxdatq0<-filter(taxdat.nat,q==0)
+natphydatq0<-filter(phydat.nat,q==0)
+
+nattaxdatq2<-filter(taxdat.nat,q==2)
+natphydatq2<-filter(phydat.nat,q==2)
+
 
 q1.tax<- brm(
   bf(local_similarity ~n_scale+ perc_invaded+(perc_invaded|NA_L1NAME),
@@ -230,6 +243,27 @@ q1.tax<- brm(
   chains = 4, iter = 4000, warmup = 3000,
   cores = 4, seed = 1234,backend = "cmdstanr")
 
+
+q0.tax<- brm(
+  bf(local_similarity ~n_scale+ perc_invaded+(perc_invaded|NA_L1NAME),
+     phi ~n_scale+ perc_invaded+(perc_invaded|NA_L1NAME)),
+  data = taxdatq0,
+  family = Beta(),
+  control=list(adapt_delta=.99),
+  chains = 4, iter = 4000, warmup = 3000,
+  cores = 4, seed = 1234,backend = "cmdstanr")
+
+q2.tax<- brm(
+  bf(local_similarity ~n_scale+ perc_invaded+(perc_invaded|NA_L1NAME),
+     phi ~n_scale+ perc_invaded+(perc_invaded|NA_L1NAME)),
+  data = taxdatq2,
+  family = Beta(),
+  control=list(adapt_delta=.99),
+  chains = 4, iter = 4000, warmup = 3000,
+  cores = 4, seed = 1234,backend = "cmdstanr")
+
+######phlo
+
 q1.phy<- brm(
   bf(local_similarity ~n_scale+ perc_invaded+(perc_invaded|NA_L1NAME),
      phi ~ n_scale+perc_invaded+(perc_invaded|NA_L1NAME)),
@@ -239,13 +273,26 @@ q1.phy<- brm(
   chains = 4, iter = 4000, warmup = 3000,
   cores = 4, seed = 1234,backend = "cmdstanr")
 
-round(fixef(q1.tax,prob=c(.25,.75,.055,.945)),2)
-round(fixef(q1.phy,prob=c(.25,.75,.055,.945)),2)
+q0.phy<- brm(
+  bf(local_similarity ~n_scale+ perc_invaded+(perc_invaded|NA_L1NAME),
+     phi ~ n_scale+perc_invaded+(perc_invaded|NA_L1NAME)),
+  data = phydatq0,
+  family = Beta(),
+  control=list(adapt_delta=.995),
+  chains = 4, iter = 4000, warmup = 3000,
+  cores = 4, seed = 1234,backend = "cmdstanr")
 
-goo<-coef(q1.phy,prob=c(.25,.75,.055,.945))
-goo[1]$NA_L1NAME[[2]]
-coef(q1.tax,prob=c(.25,.75,.055,.945))
+q2.phy<- brm(
+  bf(local_similarity ~n_scale+ perc_invaded+(perc_invaded|NA_L1NAME),
+     phi ~ n_scale+perc_invaded+(perc_invaded|NA_L1NAME)),
+  data = phydatq2,
+  family = Beta(),
+  control=list(adapt_delta=.99),
+  chains = 4, iter = 4000, warmup = 3000,
+  cores = 4, seed = 1234,backend = "cmdstanr")
 
+
+###native species only
 q1.tax.nat<- brm(
   bf(local_similarity ~n_scale+ perc_invaded+(perc_invaded|NA_L1NAME),
      phi ~n_scale+ perc_invaded+(perc_invaded|NA_L1NAME)),
@@ -254,6 +301,25 @@ q1.tax.nat<- brm(
   control=list(adapt_delta=.99),
   chains = 4, iter = 4000, warmup = 3000,
   cores = 4, seed = 1234,backend = "cmdstanr")
+
+q0.tax.nat<- brm(
+  bf(local_similarity ~n_scale+ perc_invaded+(perc_invaded|NA_L1NAME),
+     phi ~n_scale+ perc_invaded+(perc_invaded|NA_L1NAME)),
+  data = nattaxdatq0,
+  family = Beta(),
+  control=list(adapt_delta=.99),
+  chains = 4, iter = 4000, warmup = 3000,
+  cores = 4, seed = 1234,backend = "cmdstanr")
+
+q2.tax.nat<- brm(
+  bf(local_similarity ~n_scale+ perc_invaded+(perc_invaded|NA_L1NAME),
+     phi ~n_scale+ perc_invaded+(perc_invaded|NA_L1NAME)),
+  data = nattaxdatq2,
+  family = Beta(),
+  control=list(adapt_delta=.99),
+  chains = 4, iter = 4000, warmup = 3000,
+  cores = 4, seed = 1234,backend = "cmdstanr")
+
 
 q1.phy.nat<- brm(
   bf(local_similarity ~n_scale+ perc_invaded+(perc_invaded|NA_L1NAME),
@@ -264,6 +330,25 @@ q1.phy.nat<- brm(
   chains = 4, iter = 4000, warmup = 3000,
   cores = 4, seed = 1234,backend = "cmdstanr")
 
+q0.phy.nat<- brm(
+  bf(local_similarity ~n_scale+ perc_invaded+(perc_invaded|NA_L1NAME),
+     phi ~ n_scale+perc_invaded+(perc_invaded|NA_L1NAME)),
+  data = natphydatq0,
+  family = Beta(),
+  control=list(adapt_delta=.995),
+  chains = 4, iter = 4000, warmup = 3000,
+  cores = 4, seed = 1234,backend = "cmdstanr")
+
+q2.phy.nat<- brm(
+  bf(local_similarity ~n_scale+ perc_invaded+(perc_invaded|NA_L1NAME),
+     phi ~ n_scale+perc_invaded+(perc_invaded|NA_L1NAME)),
+  data = natphydatq2,
+  family = Beta(),
+  control=list(adapt_delta=.99),
+  chains = 4, iter = 4000, warmup = 3000,
+  cores = 4, seed = 1234,backend = "cmdstanr")
+
+###########################################################
 
 new.data<-data.frame(NA_L1NAME=rep(unique(taxdat$NA_L1NAME),each=11),perc_invaded=rep(c(0,.1,.2,.3,.4,.5,.6,.7,.8,.9,1),10))
 new.data$n_scale<-median(taxdat$n_scale)
@@ -274,14 +359,26 @@ new.data2$n_scale<-median(taxdat$n_scale)
 #### predictions
 library(tidybayes)
 toy_pred.l4.phy<- q1.phy %>% 
-  epred_draws(newdata =new.data,ndraws = 1000)
+  epred_draws(newdata =new.data,ndraws = 4000)
 toy_pred.l4.tax<- q1.tax %>% 
-  epred_draws(newdata =new.data,ndraws = 1000)
+  epred_draws(newdata =new.data,ndraws = 4000)
 
 toy_pred.l4.phy.noreg<- q1.phy %>% 
-  epred_draws(newdata =new.data2,ndraws = 1000,re_formula = NA)
+  epred_draws(newdata =new.data2,ndraws = 4000,re_formula = NA)
 toy_pred.l4.tax.noreg<- q1.tax %>% 
-  epred_draws(newdata =new.data2,ndraws = 1000,re_formula = NA)
+  epred_draws(newdata =new.data2,ndraws = 4000,re_formula = NA)
+
+toy_pred.l4.phy.noreg0<- q0.phy %>% 
+  epred_draws(newdata =new.data2,ndraws = 4000,re_formula = NA)
+toy_pred.l4.tax.noreg0<- q0.tax %>% 
+  epred_draws(newdata =new.data2,ndraws = 4000,re_formula = NA)
+
+toy_pred.l4.phy.noreg2<- q2.phy %>% 
+  epred_draws(newdata =new.data2,ndraws = 4000,re_formula = NA)
+toy_pred.l4.tax.noreg2<- q2.tax %>% 
+  epred_draws(newdata =new.data2,ndraws = 4000,re_formula = NA)
+
+
 
 
 
@@ -291,11 +388,25 @@ toy_pred.l4.phy$class<-"phylogenetic"
 toy_pred.l4.tax.noreg$class<-"taxonomic"
 toy_pred.l4.phy.noreg$class<-"phylogenetic"
 
+toy_pred.l4.tax.noreg0$class<-"taxonomic"
+toy_pred.l4.phy.noreg0$class<-"phylogenetic"
+
+toy_pred.l4.tax.noreg2$class<-"taxonomic"
+toy_pred.l4.phy.noreg2$class<-"phylogenetic"
+
 toy_pred.l4.phy$grouper<-paste(toy_pred.l4.phy$NA_L1NAME,toy_pred.l4.phy$class,toy_pred.l4.phy$.draw)
 toy_pred.l4.tax$grouper<-paste(toy_pred.l4.tax$NA_L1NAME,toy_pred.l4.tax$class,toy_pred.l4.tax$.draw)
 
+
 toy_pred.l4.phy.noreg$grouper<-paste(toy_pred.l4.phy.noreg$class,toy_pred.l4.phy.noreg$.draw)
 toy_pred.l4.tax.noreg$grouper<-paste(toy_pred.l4.tax.noreg$class,toy_pred.l4.tax.noreg$.draw)
+
+toy_pred.l4.phy.noreg0$grouper<-paste(toy_pred.l4.phy.noreg0$class,toy_pred.l4.phy.noreg0$.draw)
+toy_pred.l4.tax.noreg0$grouper<-paste(toy_pred.l4.tax.noreg0$class,toy_pred.l4.tax.noreg0$.draw)
+
+toy_pred.l4.phy.noreg2$grouper<-paste(toy_pred.l4.phy.noreg2$class,toy_pred.l4.phy.noreg2$.draw)
+toy_pred.l4.tax.noreg2$grouper<-paste(toy_pred.l4.tax.noreg2$class,toy_pred.l4.tax.noreg2$.draw)
+
 
 
 
@@ -304,25 +415,77 @@ aaa<-ggpubr::ggarrange(ggplot()+
                          geom_point(data=taxdatq1,aes(x=perc_invaded*100,y=local_similarity),size=.1)+
                          
                          geom_line(data=toy_pred.l4.tax.noreg,aes(x=perc_invaded*100,y=.epred, group=grouper),size=.01,alpha=.5)+
-                         coord_cartesian(ylim=c(.2,.9))+ggthemes::theme_few(base_size = 10)+geom_smooth(method="glm",color="black")+ylab("taxonomic similarity")+xlab("% invaded"),
+                         coord_cartesian(ylim=c(0,1))+ggthemes::theme_few(base_size = 10)+geom_smooth(method="glm",color="black")+ylab("taxonomic similarity")+xlab("% invaded"),
                        
                        
                        ggplot()+
                          geom_point(data=phydatq1,aes(x=perc_invaded*100,y=local_similarity),size=.1)+
                          
                          geom_line(data=toy_pred.l4.phy.noreg,aes(x=perc_invaded*100,y=.epred, group=grouper),size=.01,alpha=.5)+
-                         coord_cartesian(ylim=c(.75,1))+ggthemes::theme_few(base_size = 10)+geom_smooth(method="glm",color="black")+ylab("phylogenetic similarity")+xlab("% invaded"),ncol=2)
+                         coord_cartesian(ylim=c(0.7,1))+ggthemes::theme_few(base_size = 10)+geom_smooth(method="glm",color="black")+ylab("phylogenetic similarity")+xlab("% invaded"),ncol=2)
 
+bbb<-ggpubr::ggarrange(ggplot()+
+                         geom_point(data=taxdatq0,aes(x=perc_invaded*100,y=local_similarity),size=.1)+
+                         
+                         geom_line(data=toy_pred.l4.tax.noreg0,aes(x=perc_invaded*100,y=.epred, group=grouper),size=.01,alpha=.5)+
+                         coord_cartesian(ylim=c(0,1))+ggthemes::theme_few(base_size = 10)+geom_smooth(method="glm",color="black")+ylab("taxonomic similarity")+xlab("% invaded"),
+                       
+                       
+                       ggplot()+
+                         geom_point(data=phydatq0,aes(x=perc_invaded*100,y=local_similarity),size=.1)+
+                         
+                         geom_line(data=toy_pred.l4.phy.noreg0,aes(x=perc_invaded*100,y=.epred, group=grouper),size=.01,alpha=.5)+
+                         coord_cartesian(ylim=c(0.7,1))+ggthemes::theme_few(base_size = 10)+geom_smooth(method="glm",color="black")+ylab("phylogenetic similarity")+xlab("% invaded"),ncol=2)
+
+
+
+ccc<-ggpubr::ggarrange(ggplot()+
+                    geom_point(data=taxdatq2,aes(x=perc_invaded*100,y=local_similarity),size=.1)+
+                    
+                    geom_line(data=toy_pred.l4.tax.noreg2,aes(x=perc_invaded*100,y=.epred, group=grouper),size=.01,alpha=.5)+
+                    coord_cartesian(ylim=c(0,1))+ggthemes::theme_few(base_size = 10)+geom_smooth(method="glm",color="black")+ylab("taxonomic similarity")+xlab("% invaded"),
+                  
+                  
+                  ggplot()+
+                    geom_point(data=phydatq2,aes(x=perc_invaded*100,y=local_similarity),size=.1)+
+                    
+                    geom_line(data=toy_pred.l4.phy.noreg2,aes(x=perc_invaded*100,y=.epred, group=grouper),size=.01,alpha=.5)+
+                    coord_cartesian(ylim=c(0.7,1))+ggthemes::theme_few(base_size = 10)+geom_smooth(method="glm",color="black")+ylab("phylogenetic similarity")+xlab("% invaded"),ncol=2)
+
+
+
+ggpubr::ggarrange(bbb,aaa,ccc,ncol=1,labels = c("a)","b)","c)"))
+
+round(fixef(q1.tax,probs = c(.25,.75,.05,.95)),2)#-
+round(fixef(q1.phy,probs = c(.25,.75,.05,.95)),2)#**
+
+round(fixef(q0.tax,probs = c(.25,.75,.05,.95)),2)#-
+round(fixef(q0.phy,probs = c(.25,.75,.05,.95)),2)#* negative
+
+round(fixef(q2.tax,probs = c(.25,.75,.05,.95)),2)#*
+round(fixef(q2.phy,probs = c(.25,.75,.05,.95)),2)#**
 
 nattoy_pred.l4.phy<- q1.phy.nat %>% 
-  epred_draws(newdata =new.data,ndraws = 1000)
+  epred_draws(newdata =new.data,ndraws = 4000)
 nattoy_pred.l4.tax<- q1.tax.nat %>% 
-  epred_draws(newdata =new.data,ndraws = 1000)
+  epred_draws(newdata =new.data,ndraws = 4000)
 
 nattoy_pred.l4.phy.noreg<- q1.phy.nat %>% 
-  epred_draws(newdata =new.data2,ndraws = 1000,re_formula = NA)
+  epred_draws(newdata =new.data2,ndraws = 4000,re_formula = NA)
 nattoy_pred.l4.tax.noreg<- q1.tax.nat %>% 
-  epred_draws(newdata =new.data2,ndraws = 1000,re_formula = NA)
+  epred_draws(newdata =new.data2,ndraws = 4000,re_formula = NA)
+
+
+nattoy_pred.l4.phy.noreg0<- q0.phy.nat %>% 
+  epred_draws(newdata =new.data2,ndraws = 4000,re_formula = NA)
+nattoy_pred.l4.tax.noreg0<- q0.tax.nat %>% 
+  epred_draws(newdata =new.data2,ndraws = 4000,re_formula = NA)
+
+
+nattoy_pred.l4.phy.noreg2<- q2.phy.nat %>% 
+  epred_draws(newdata =new.data2,ndraws = 4000,re_formula = NA)
+nattoy_pred.l4.tax.noreg2<- q2.tax.nat %>% 
+  epred_draws(newdata =new.data2,ndraws = 4000,re_formula = NA)
 
 
 
@@ -343,15 +506,15 @@ nattoy_pred.l4.tax.noreg$grouper<-paste(nattoy_pred.l4.tax.noreg$class,nattoy_pr
 aab<-ggpubr::ggarrange(ggplot()+
                          geom_point(data=nattaxdatq1,aes(x=perc_invaded*100,y=local_similarity),size=.1)+
                          
-                         geom_line(data=nattoy_pred.l4.tax.noreg,aes(x=perc_invaded*100,y=.epred, group=grouper),size=.01,alpha=.5)+
-                         coord_cartesian(ylim=c(.2,.9))+ggthemes::theme_few(base_size = 10)+geom_smooth(method="glm",color="black")+ylab("taxonomic similarity")+xlab("% invaded"),
+                         geom_line(data=nattoy_pred.l4.tax.noreg,aes(x=perc_invaded*100,y=.epred, group=grouper),size=.01,alpha=.5,color="darkgreen")+
+                         coord_cartesian(ylim=c(.3,.8))+ggthemes::theme_few(base_size = 10)+geom_smooth(method="glm",color="black")+ylab("taxonomic similarity")+xlab("% invaded"),
                        
                        
                        ggplot()+
                          geom_point(data=natphydatq1,aes(x=perc_invaded*100,y=local_similarity),size=.1)+
                          
-                         geom_line(data=nattoy_pred.l4.phy.noreg,aes(x=perc_invaded*100,y=.epred, group=grouper),size=.01,alpha=.5)+
-                         coord_cartesian(ylim=c(.75,1))+ggthemes::theme_few(base_size = 10)+geom_smooth(method="glm",color="black")+ylab("phylogenetic similarity")+xlab("% invaded"),ncol=2)
+                         geom_line(data=nattoy_pred.l4.phy.noreg,aes(x=perc_invaded*100,y=.epred, group=grouper),size=.01,alpha=.5,color="darkgreen")+
+                         coord_cartesian(ylim=c(.8,.95))+ggthemes::theme_few(base_size = 10)+geom_smooth(method="glm",color="darkgreen")+ylab("phylogenetic similarity")+xlab("% invaded"),ncol=2)
 
 
 ###regions
@@ -365,14 +528,16 @@ aa<-ggpubr::ggarrange(ggplot()+
                         geom_point(data=mainq1tax,aes(x=perc_invaded*100,y=local_similarity),size=.1)+
                         
                         geom_line(data=toy_mainq1tax,aes(x=perc_invaded*100,y=.epred, group=grouper),size=.01,alpha=.5)+facet_wrap(~NA_L1NAME,nrow=5)+
-                        coord_cartesian(ylim=c(.25,.8))+ggthemes::theme_few(base_size = 9)+geom_smooth(method="glm",color="black")+ylab("taxonomic similarity")+xlab("% invaded"),
+                        coord_cartesian(ylim=c(.1,.8))+ggthemes::theme_few(base_size = 9)+geom_smooth(method="glm",color="black")+ylab("taxonomic similarity")+xlab("% invaded"),
                       
                       
                       ggplot()+
                         geom_point(data=mainq1phy,aes(x=perc_invaded*100,y=local_similarity),size=.1)+
                         
                         geom_line(data=toy_mainq1phy,aes(x=perc_invaded*100,y=.epred, group=grouper),size=.01,alpha=.5)+facet_wrap(~NA_L1NAME,nrow=5)+
-                        coord_cartesian(ylim=c(.8,1))+ggthemes::theme_few(base_size = 9)+geom_smooth(method="glm",color="black")+ylab("phylogenetic similarity")+xlab("% invaded"),ncol=2)
+                        coord_cartesian(ylim=c(.7,1))+ggthemes::theme_few(base_size = 9)+geom_smooth(method="glm",color="black")+ylab("phylogenetic similarity")+xlab("% invaded"),ncol=2)
+
+
 
 
 natmainq1tax<-filter(nattaxdatq1,NA_L1NAME %in% c('EASTERN TEMPERATE FORESTS','GREAT PLAINS','NORTH AMERICAN DESERTS','NORTHERN FORESTS','NORTHWESTERN FORESTED MOUNTAINS'))
@@ -400,15 +565,42 @@ save.image("Analyses/Master/hogzmain.Rda")
 nattoy_mainq1tax$status<-"native"
 toy_mainq1tax$status<-"all"
 
+
 nattoy_mainq1phy$status<-"native"
 toy_mainq1phy$status<-"all"
 
 toyphy<-rbind(nattoy_mainq1phy,toy_mainq1phy)
 
+natmainq1phy$status<-"native"
+mainq1phy$status<-"all"
+natphy<-rbind(natmainq1phy,mainq1phy)
+toyphy$grouper<-paste(toyphy$grouper,toyphy$status)
+
+
+
 toytax<-rbind(nattoy_mainq1tax,toy_mainq1tax)
 
-ggplot()+geom_smooth(data=toytax,aes(x=perc_invaded*100,y=.epred,color=status))+facet_wrap(~NA_L1NAME,nrow=5)+
-  coord_cartesian(ylim=c(.3,.7))+ggthemes::theme_few(base_size = 9)+ylab("taxonomic similarity")+xlab("% invaded")+scale_color_manual(values=c("black","forestgreen"))
+natmainq1tax$status<-"native"
+mainq1tax$status<-"all"
+nattax<-rbind(natmainq1tax,mainq1tax)
+toytax$grouper<-paste(toytax$grouper,toytax$status)
 
-ggplot()+geom_smooth(data=toyphy,aes(x=perc_invaded*100,y=.epred,color=status))+facet_wrap(~NA_L1NAME,nrow=5)+
-  coord_cartesian(ylim=c(.8,.95))+ggthemes::theme_few(base_size = 9)+ylab("taxonomic similarity")+xlab("% invaded")+scale_color_manual(values=c("black","forestgreen"))
+ggpubr::ggarrange(ggplot()+
+  geom_point(data=nattax,aes(x=perc_invaded*100,y=local_similarity,color=status),size=0.1)+
+  geom_line(data=toytax,aes(x=perc_invaded*100,y=.epred,color=status,group=grouper),alpha=.4,size=0.01)+
+
+  #geom_smooth(data=toytax,aes(x=perc_invaded*100,y=.epred,color=status))+
+  facet_wrap(~NA_L1NAME,nrow=5)+
+  coord_cartesian(ylim=c(.2,.7))+
+  ggthemes::theme_few(base_size = 9)+ylab("taxonomic similarity")+xlab("% invaded")+scale_color_manual(values=c("black","forestgreen")),
+
+ggplot()+
+  geom_point(data=natphy,aes(x=perc_invaded*100,y=local_similarity,color=status),size=0.1)+
+  geom_line(data=toyphy,aes(x=perc_invaded*100,y=.epred,color=status,group=grouper),alpha=.4,size=0.01)+
+  
+  #geom_smooth(data=toyphy,aes(x=perc_invaded*100,y=.epred,color=status))+
+  facet_wrap(~NA_L1NAME,nrow=5)+
+  coord_cartesian(ylim=c(.8,.95))+
+  ggthemes::theme_few(base_size = 9)+
+  ylab("taxonomic similarity")+xlab("% invaded")+
+  scale_color_manual(values=c("black","forestgreen")),ncol=2,common.legend = TRUE)

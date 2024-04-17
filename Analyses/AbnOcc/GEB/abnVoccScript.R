@@ -86,7 +86,7 @@ for (z in c(1:length(ecoregionz))){
   
   print(paste("done",which(ecoregionz==ecoregionz[z]))) #finish loop   
 }
-}
+
 ## the column "local_similarity" represents the sorensen (occ) and horn similarity (abn) index
 ## this is what we use in our analyses
 
@@ -161,7 +161,8 @@ env$same.dat.u<-ifelse(env$dataset.u.plot.1==env$dataset.u.plot.2,1,0)#are the n
 env$same.all<-ifelse(env$dataset.u.plot.1==env$dataset.u.plot.2& env$dataset.u.plot.1==env$dataset.i.plot.1&env$dataset.i.plot.1==env$dataset.i.plot.2,1,0) # are all 4 plots that make up the comparision from the same dataset
 
 
-
+table(env$same.all)
+803541/969488
 ##make plot 4
 ex1<-ggplot(env,aes(as.factor(same.all),dif))+stat_summary(size=0.001,alpha=0.2,aes(group=L4_KEY),position="jitter",shape=1)+
   stat_summary(
