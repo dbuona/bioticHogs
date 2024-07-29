@@ -3,3 +3,10 @@
 .DS_Store
 highplainsdrifer/highplainsdrifterdata.csv
 *.csv
+*.shp
+*.sbn
+*.prj
+*.sbx
+*.xml
+*.shx
+*.dbf
