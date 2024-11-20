@@ -17,6 +17,7 @@ library(ggplot2)
 
 setwd("~/Documents/git/bioticHogs/")
 #load("Analyses/Master/hogzmain.Rda")
+load("Analyses/Master/hogzmainwDataset.Rda")
 dplot<-read.csv("Data/FULLDatabase_10272022.csv")
 dplot<-dplyr::select(dplot,Dataset,Plot)
 dplot<-distinct(dplot)
@@ -627,7 +628,7 @@ nattoy_pred.l4.phy2<- q2.phy.nat %>%
 nattoy_pred.l4.tax2<- q2.tax.nat %>% 
   epred_draws(newdata =new.data,ndraws = 4000,re_formula = ~(perc_invaded|NA_L1NAME))
 
-if(FALSE){}
+if(FALSE){
 nattoy_pred.l4.phy.noreg<- q1.phy.nat %>% 
   epred_draws(newdata =new.data2,ndraws = 4000,re_formula = NA)
 nattoy_pred.l4.tax.noreg<- q1.tax.nat %>% 
@@ -646,29 +647,27 @@ nattoy_pred.l4.tax.noreg2<- q2.tax.nat %>%
   epred_draws(newdata =new.data2,ndraws = 4000,re_formula = NA)
 
 
-
-nattoy_pred.l4.tax$class<-"taxonomic"
+if (FALSE){
+  nattoy_pred.l4.tax$class<-"taxonomic"
 nattoy_pred.l4.phy$class<-"phylogenetic"
-
-nattoy_pred.l4.tax2$class<-"taxonomic"
-nattoy_pred.l4.phy2$class<-"phylogenetic"
-
-
 nattoy_pred.l4.tax.noreg$class<-"taxonomic"
 nattoy_pred.l4.phy.noreg$class<-"phylogenetic"
 
+}
+nattoy_pred.l4.tax2$class<-"taxonomic"
+nattoy_pred.l4.phy2$class<-"phylogenetic"
 nattoy_pred.l4.tax.noreg2$class<-"taxonomic"
 nattoy_pred.l4.phy.noreg2$class<-"phylogenetic"
 
-nattoy_pred.l4.phy$grouper<-paste(nattoy_pred.l4.phy$NA_L1NAME,nattoy_pred.l4.phy$class,nattoy_pred.l4.phy$.draw)
-nattoy_pred.l4.tax$grouper<-paste(nattoy_pred.l4.tax$NA_L1NAME,nattoy_pred.l4.tax$class,nattoy_pred.l4.tax$.draw)
+#nattoy_pred.l4.phy$grouper<-paste(nattoy_pred.l4.phy$NA_L1NAME,nattoy_pred.l4.phy$class,nattoy_pred.l4.phy$.draw)
+#nattoy_pred.l4.tax$grouper<-paste(nattoy_pred.l4.tax$NA_L1NAME,nattoy_pred.l4.tax$class,nattoy_pred.l4.tax$.draw)
 
 nattoy_pred.l4.phy2$grouper<-paste(nattoy_pred.l4.phy2$NA_L1NAME,nattoy_pred.l4.phy2$class,nattoy_pred.l4.phy2$.draw)
 nattoy_pred.l4.tax2$grouper<-paste(nattoy_pred.l4.tax2$NA_L1NAME,nattoy_pred.l4.tax2$class,nattoy_pred.l4.tax2$.draw)
 
 
-nattoy_pred.l4.phy.noreg$grouper<-paste(nattoy_pred.l4.phy.noreg$class,nattoy_pred.l4.phy.noreg$.draw)
-nattoy_pred.l4.tax.noreg$grouper<-paste(nattoy_pred.l4.tax.noreg$class,nattoy_pred.l4.tax.noreg$.draw)
+#nattoy_pred.l4.phy.noreg$grouper<-paste(nattoy_pred.l4.phy.noreg$class,nattoy_pred.l4.phy.noreg$.draw)
+#nattoy_pred.l4.tax.noreg$grouper<-paste(nattoy_pred.l4.tax.noreg$class,nattoy_pred.l4.tax.noreg$.draw)
 
 nattoy_pred.l4.phy.noreg2$grouper<-paste(nattoy_pred.l4.phy.noreg2$class,nattoy_pred.l4.phy.noreg2$.draw)
 nattoy_pred.l4.tax.noreg2$grouper<-paste(nattoy_pred.l4.tax.noreg2$class,nattoy_pred.l4.tax.noreg2$.draw)
@@ -865,27 +864,27 @@ nattax<-rbind(natmainq2tax,mainq2tax)
 toytax$grouper<-paste(toytax$grouper,toytax$status)
 
 
-jpeg("Analyses/Master/Plots/q2comps.jpeg",width = 5,height = 6, unit="in",res=300)
+jpeg("Analyses/Master/Plots/q2comps.jpeg",width = 11,height = 6, unit="in",res=300)
 
 ggpubr::ggarrange(ggplot()+
-  geom_point(data=nattax,aes(x=perc_invaded*100,y=local_similarity,color=status),size=0.1)+
-  geom_line(data=toytax,aes(x=perc_invaded*100,y=.epred,color=status,group=grouper),alpha=.15,size=0.01)+
+  #geom_point(data=nattax,aes(x=perc_invaded*100,y=local_similarity,color=status),size=0.1)+
+  geom_line(data=toytax,aes(x=perc_invaded*100,y=.epred,color=status,group=grouper),alpha=0.8,size=0.002)+
 
-  geom_smooth(data=toytax,aes(x=perc_invaded*100,y=.epred,color=status),size=1)+
-  facet_wrap(~NA_L1NAME,nrow=5)+
-  coord_cartesian(ylim=c(.1,.6))+
+  geom_smooth(data=toytax,aes(x=perc_invaded*100,y=.epred,color=status),size=2)+
+  facet_wrap(~NA_L1NAME,nrow=1,scales="free_y")+
+  #coord_cartesian(ylim=c(.1,.6))+
   ggthemes::theme_few(base_size = 9)+ylab("taxonomic similarity")+xlab("% invaded")+scale_color_manual(values=c("black","forestgreen")),
 
 ggplot()+
-  geom_point(data=natphy,aes(x=perc_invaded*100,y=local_similarity,color=status),size=0.1)+
-  geom_line(data=toyphy,aes(x=perc_invaded*100,y=.epred,color=status,group=grouper),alpha=.15,size=0.01)+
+  #geom_point(data=natphy,aes(x=perc_invaded*100,y=local_similarity,color=status),size=0.1)+
+  geom_line(data=toyphy,aes(x=perc_invaded*100,y=.epred,color=status,group=grouper),alpha=0.8,size=0.002)+
   
-  geom_smooth(data=toyphy,aes(x=perc_invaded*100,y=.epred,color=status),size=1)+
-  facet_wrap(~NA_L1NAME,nrow=5)+
-  coord_cartesian(ylim=c(.7,1))+
+  geom_smooth(data=toyphy,aes(x=perc_invaded*100,y=.epred,color=status),size=2)+
+  facet_wrap(~NA_L1NAME,nrow=1,scales="free_y")+
+  #coord_cartesian(ylim=c(.7,1))+
   ggthemes::theme_few(base_size = 9)+
   ylab("phylogenetic similarity")+xlab("% invaded")+
-  scale_color_manual(values=c("black","forestgreen")),ncol=2,common.legend = TRUE)
+  scale_color_manual(values=c("black","forestgreen")),ncol=1,common.legend = TRUE)
 
 dev.off()
 coef(q2.tax.nat,probs = c(.25,.75,.05,.95))
@@ -982,21 +981,26 @@ pred.inv.phy2$grouper<-paste(pred.inv.phy2$NA_L1NAME,pred.inv.phy2$class,pred.in
 pred.inv.tax2$grouper<-paste(pred.inv.tax2$NA_L1NAME,pred.inv.tax2$class,pred.inv.tax2$.draw)
 
 
-#pred.inv.tax2<-filter(pred.inv.tax2, NA_L1NAME %in% c('EASTERN TEMPERATE FORESTS','GREAT PLAINS','NORTH AMERICAN DESERTS','NORTHERN FORESTS','NORTHWESTERN FORESTED MOUNTAINS'))
-#pred.inv.phy2<-filter(pred.inv.phy2, NA_L1NAME %in% c('EASTERN TEMPERATE FORESTS','GREAT PLAINS','NORTH AMERICAN DESERTS','NORTHERN FORESTS','NORTHWESTERN FORESTED MOUNTAINS'))
+pred.inv.tax2<-filter(pred.inv.tax2, NA_L1NAME %in% c('EASTERN TEMPERATE FORESTS','GREAT PLAINS','NORTH AMERICAN DESERTS','NORTHERN FORESTS','NORTHWESTERN FORESTED MOUNTAINS'))
+pred.inv.phy2<-filter(pred.inv.phy2, NA_L1NAME %in% c('EASTERN TEMPERATE FORESTS','GREAT PLAINS','NORTH AMERICAN DESERTS','NORTHERN FORESTS','NORTHWESTERN FORESTED MOUNTAINS'))
 
-ggpubr::ggarrange(ggplot()+
-                    geom_point(data=taxinvyq2,aes(x=perc_invaded*100,y=local_similarity),size=.1)+
+short.tax2<-filter(taxinvyq2, NA_L1NAME %in% c('EASTERN TEMPERATE FORESTS','GREAT PLAINS','NORTH AMERICAN DESERTS','NORTHERN FORESTS','NORTHWESTERN FORESTED MOUNTAINS'))
+short.inv.phy2<-filter(phyinvyq2, NA_L1NAME %in% c('EASTERN TEMPERATE FORESTS','GREAT PLAINS','NORTH AMERICAN DESERTS','NORTHERN FORESTS','NORTHWESTERN FORESTED MOUNTAINS'))
+
+
+
+invytrends<-ggpubr::ggarrange(ggplot()+
+                    geom_point(data=short.tax2,aes(x=perc_invaded*100,y=local_similarity),size=.1)+
                     
-                    geom_line(data=pred.inv.tax2,aes(x=perc_invaded*100,y=.epred, group=grouper),size=.01,alpha=.5)+facet_wrap(~NA_L1NAME,ncol=5)+
+                    geom_line(data=pred.inv.tax2,aes(x=perc_invaded*100,y=.epred, group=grouper),size=.002,alpha=.9,color="firebrick4")+facet_wrap(~NA_L1NAME,ncol=5)+
                     geom_smooth(data=pred.inv.tax2,aes(x=perc_invaded*100,y=.epred),size=1,color="firebrick4")+
                     coord_cartesian(ylim=c(0,.8))+ggthemes::theme_few(base_size = 9)+ylab("taxonomic similarity")+xlab("% invaded"),
                   
                   
                   ggplot()+
-                    geom_point(data=phyinvyq2,aes(x=perc_invaded*100,y=local_similarity),size=.1)+
+                    geom_point(data=short.inv.phy2,aes(x=perc_invaded*100,y=local_similarity),size=.1)+
                     
-                    geom_line(data=pred.inv.phy2,aes(x=perc_invaded*100,y=.epred, group=grouper),size=.01,alpha=.5)+facet_wrap(~NA_L1NAME,ncol=5)+
+                    geom_line(data=pred.inv.phy2,aes(x=perc_invaded*100,y=.epred, group=grouper),size=.002,alpha=.8,color="firebrick4")+facet_wrap(~NA_L1NAME,ncol=5)+
                     geom_smooth(data=pred.inv.phy2,aes(x=perc_invaded*100,y=.epred),size=1,color="firebrick4")+
                     coord_cartesian(ylim=c(0,.9))+ggthemes::theme_few(base_size = 9)+ylab("phylogenetic similarity")+xlab("% invaded"),nrow=2,labels=c("c)","d)"))
 
@@ -1021,8 +1025,16 @@ alphamod<-brm(
   chains = 4, iter = 4000, warmup = 3000,
   cores = 4, seed = 1234,backend = "cmdstanr")
 
-gammamodphy<-brm(
+#gammamodphy<-brm(
   bf(PD_gamma ~n_scale+(1|NA_L1NAME)+(1|Dataset)),
+  data = phyinvyq2,
+  family =  gaussian(),
+  control=list(adapt_delta=.95),
+  chains = 4, iter = 4000, warmup = 3000,
+  cores = 4, seed = 1234,backend = "cmdstanr")
+
+alphamodphy<-brm(
+  bf(PD_alpha ~n_scale+(1|NA_L1NAME)+(1|Dataset)),
   data = phyinvyq2,
   family =  gaussian(),
   control=list(adapt_delta=.95),
@@ -1055,30 +1067,40 @@ simmod<-brm(
   chains = 4, iter = 4000, warmup = 3000,
   cores = 4, seed = 1234,backend = "cmdstanr")
 
-simmodphy<-brm(
-  bf(local_similarity ~n_scale+(1|NA_L1NAME)+(1|Dataset),
-     phi ~ n_scale+(1|NA_L1NAME)+(1|Dataset)),
-  data = phyinvyq2,
-  control=list(adapt_delta=.99),
-  family =  Beta(),
-  chains = 4, iter = 4000, warmup = 3000,
-  cores = 4, seed = 1234,backend = "cmdstanr")
+#simmodphy<-brm(
+#  bf(local_similarity ~n_scale+(1|NA_L1NAME)+(1|Dataset),
+ #    phi ~ n_scale+(1|NA_L1NAME)+(1|Dataset)),
+#  data = phyinvyq2,
+#  control=list(adapt_delta=.99),
+#  family =  Beta(),
+#  chains = 4, iter = 4000, warmup = 3000,
+ # cores = 4, seed = 1234,backend = "cmdstanr")
 
 predsim<-simmod %>% 
   epred_draws(newdata =expdat,ndraws = 1000,re_formula =~(1|NA_L1NAME))
 
-predsimphy<-simmodphy %>% 
-  epred_draws(newdata =expdat,ndraws = 1000,re_formula =~(1|NA_L1NAME))
+#predsimphy<-simmodphy %>% 
+ # epred_draws(newdata =expdat,ndraws = 1000,re_formula =~(1|NA_L1NAME))
 
 predalpha$guide<-predgamma$`.epred`
-pbeta<-ggplot(predsim,aes(.epred,reorder(NA_L1NAME,-.epred)))+stat_pointinterval(.width = c(.5,.9))+ggthemes::theme_few(base_size = 9)+xlab("non-native taxonomic similarity")+ylab("")
-pgamma<-ggplot(predgamma,aes(.epred,reorder(NA_L1NAME,.epred)))+stat_pointinterval(.width = c(.5,.9))+ggthemes::theme_few(base_size = 9)+xlab("non-native gamma diversity")+ylab("")+
+pbeta<-ggplot(predsim,aes(.epred,reorder(NA_L1NAME,-.epred)))+stat_pointinterval(.width = c(.5,.9),color="firebrick4")+ggthemes::theme_few(base_size = 9)+xlab("non-native taxonomic similarity")+ylab("")
+#pbetaphy<-ggplot(predsimphy,aes(.epred,reorder(NA_L1NAME,-.epred)))+stat_pointinterval(.width = c(.5,.9))+ggthemes::theme_few(base_size = 9)+xlab("non-native taxonomic similarity")+ylab("")
+
+
+pgamma<-ggplot(predgamma,aes(.epred,reorder(NA_L1NAME,.epred)))+stat_pointinterval(.width = c(.5,.9),color="firebrick4")+ggthemes::theme_few(base_size = 9)+xlab("non-native gamma diversity")+ylab("")+
   theme(axis.text.y = element_blank(),axis.ticks.y = element_blank())
-palpha<-ggplot(predalpha,aes(.epred,reorder(NA_L1NAME,guide)))+stat_pointinterval(.width = c(.5,.9))+ggthemes::theme_few(base_size = 9)+
+palpha<-ggplot(predalpha,aes(.epred,reorder(NA_L1NAME,guide)))+stat_pointinterval(.width = c(.5,.9),color="firebrick4")+ggthemes::theme_few(base_size = 9)+
   xlab("non-native alpha diversity")+ylab("")+theme(axis.text.y = element_blank(),axis.ticks.y = element_blank())
 
-jpeg("Analyses/Master/Plots/q2explaintheinvies.jpeg",width = 8,height = 3, unit="in",res=300)
-ggpubr::ggarrange(pbeta,pgamma,palpha,ncol=3,widths = c(.4,.2,.2))
+#jpeg("Analyses/Master/Plots/q2explaintheinvies.jpeg",width = 8,height = 3, unit="in",res=300)
+
+placeholder<-ggplot()+ggthemes::theme_few()
+
+
+#jpeg("Analyses/Master/Plots/q2explaintheinvies.jpeg",width = 10,height = 11, unit="in",res=300)
+pdf("Analyses/Master/Plots/q2explaintheinvies.pdf",width = 10,height = 11)
+ggpubr::ggarrange(
+ggpubr::ggarrange(pbeta,pgamma,palpha,ncol=3,widths = c(.35,.2,.2)),placeholder,invytrends,ncol=1,labels=c("a)","",""))
 dev.off()
 
 ###map maker

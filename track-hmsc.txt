@@ -1,0 +1,142 @@
+starting worker for localhost:11873 
+Type: EXEC 
+Type: EXEC 
+Type: EXEC 
+Type: EXEC 
+Type: EXEC 
+JOB STARTED AT Tue Sep 24 11:17:35 2024 ON vl965-172-31-137-237.wireless.umass.edu (OSDarwin) 21.3.0
+ 
+Type: EXEC 
+Type: EXEC 
+Type: EXEC 
+Type: EXEC 
+Type: EXEC 
+Type: EXEC 
+R Version:  R version 4.1.2 (2021-11-01) 
+
+Type: EXEC 
+Type: EXEC 
+Type: EXEC 
+Type: EXEC 
+Type: EXEC 
+Type: EXEC 
+Type: EXEC 
+Type: EXEC 
+Loading required package: coda
+Type: EXEC 
+Type: EXEC 
+Type: EXEC 
+Library Hmsc loaded.
+Type: EXEC 
+Type: EXEC 
+Type: EXEC 
+Type: EXEC 
+Type: EXEC 
+Type: EXEC 
+Type: EXEC 
+Type: EXEC 
+Type: EXEC 
+Type: EXEC 
+Type: EXEC 
+using 1 cores for 1 chains
+Chain 1, iteration 10 of 1000 (transient)
+Chain 1, iteration 20 of 1000 (transient)
+Chain 1, iteration 30 of 1000 (transient)
+Chain 1, iteration 40 of 1000 (transient)
+Chain 1, iteration 50 of 1000 (transient)
+Chain 1, iteration 60 of 1000 (transient)
+Chain 1, iteration 70 of 1000 (transient)
+Chain 1, iteration 80 of 1000 (transient)
+Chain 1, iteration 90 of 1000 (transient)
+Chain 1, iteration 100 of 1000 (transient)
+Chain 1, iteration 110 of 1000 (transient)
+Chain 1, iteration 120 of 1000 (transient)
+Chain 1, iteration 130 of 1000 (transient)
+Chain 1, iteration 140 of 1000 (transient)
+Chain 1, iteration 150 of 1000 (transient)
+Chain 1, iteration 160 of 1000 (transient)
+Chain 1, iteration 170 of 1000 (transient)
+Chain 1, iteration 180 of 1000 (transient)
+Chain 1, iteration 190 of 1000 (transient)
+Chain 1, iteration 200 of 1000 (transient)
+Chain 1, iteration 210 of 1000 (transient)
+Chain 1, iteration 220 of 1000 (transient)
+Chain 1, iteration 230 of 1000 (transient)
+Chain 1, iteration 240 of 1000 (transient)
+Chain 1, iteration 250 of 1000 (transient)
+Chain 1, iteration 260 of 1000 (transient)
+Chain 1, iteration 270 of 1000 (transient)
+Chain 1, iteration 280 of 1000 (transient)
+Chain 1, iteration 290 of 1000 (transient)
+Chain 1, iteration 300 of 1000 (transient)
+Chain 1, iteration 310 of 1000 (transient)
+Chain 1, iteration 320 of 1000 (transient)
+Chain 1, iteration 330 of 1000 (transient)
+Chain 1, iteration 340 of 1000 (transient)
+Chain 1, iteration 350 of 1000 (transient)
+Chain 1, iteration 360 of 1000 (transient)
+Chain 1, iteration 370 of 1000 (transient)
+Chain 1, iteration 380 of 1000 (transient)
+Chain 1, iteration 390 of 1000 (transient)
+Chain 1, iteration 400 of 1000 (transient)
+Chain 1, iteration 410 of 1000 (transient)
+Chain 1, iteration 420 of 1000 (transient)
+Chain 1, iteration 430 of 1000 (transient)
+Chain 1, iteration 440 of 1000 (transient)
+Chain 1, iteration 450 of 1000 (transient)
+Chain 1, iteration 460 of 1000 (transient)
+Chain 1, iteration 470 of 1000 (transient)
+Chain 1, iteration 480 of 1000 (transient)
+Chain 1, iteration 490 of 1000 (transient)
+Chain 1, iteration 500 of 1000 (transient)
+Chain 1, iteration 510 of 1000 (sampling)
+Chain 1, iteration 520 of 1000 (sampling)
+Chain 1, iteration 530 of 1000 (sampling)
+Chain 1, iteration 540 of 1000 (sampling)
+Chain 1, iteration 550 of 1000 (sampling)
+Chain 1, iteration 560 of 1000 (sampling)
+Chain 1, iteration 570 of 1000 (sampling)
+Chain 1, iteration 580 of 1000 (sampling)
+Chain 1, iteration 590 of 1000 (sampling)
+Chain 1, iteration 600 of 1000 (sampling)
+Chain 1, iteration 610 of 1000 (sampling)
+Chain 1, iteration 620 of 1000 (sampling)
+Chain 1, iteration 630 of 1000 (sampling)
+Chain 1, iteration 640 of 1000 (sampling)
+Chain 1, iteration 650 of 1000 (sampling)
+Chain 1, iteration 660 of 1000 (sampling)
+Chain 1, iteration 670 of 1000 (sampling)
+Chain 1, iteration 680 of 1000 (sampling)
+Chain 1, iteration 690 of 1000 (sampling)
+Chain 1, iteration 700 of 1000 (sampling)
+Chain 1, iteration 710 of 1000 (sampling)
+Chain 1, iteration 720 of 1000 (sampling)
+Chain 1, iteration 730 of 1000 (sampling)
+Chain 1, iteration 740 of 1000 (sampling)
+Chain 1, iteration 750 of 1000 (sampling)
+Chain 1, iteration 760 of 1000 (sampling)
+Chain 1, iteration 770 of 1000 (sampling)
+Chain 1, iteration 780 of 1000 (sampling)
+Chain 1, iteration 790 of 1000 (sampling)
+Chain 1, iteration 800 of 1000 (sampling)
+Chain 1, iteration 810 of 1000 (sampling)
+Chain 1, iteration 820 of 1000 (sampling)
+Chain 1, iteration 830 of 1000 (sampling)
+Chain 1, iteration 840 of 1000 (sampling)
+Chain 1, iteration 850 of 1000 (sampling)
+Chain 1, iteration 860 of 1000 (sampling)
+Chain 1, iteration 870 of 1000 (sampling)
+Chain 1, iteration 880 of 1000 (sampling)
+Chain 1, iteration 890 of 1000 (sampling)
+Chain 1, iteration 900 of 1000 (sampling)
+Chain 1, iteration 910 of 1000 (sampling)
+Chain 1, iteration 920 of 1000 (sampling)
+Chain 1, iteration 930 of 1000 (sampling)
+Chain 1, iteration 940 of 1000 (sampling)
+Chain 1, iteration 950 of 1000 (sampling)
+Chain 1, iteration 960 of 1000 (sampling)
+Chain 1, iteration 970 of 1000 (sampling)
+Chain 1, iteration 980 of 1000 (sampling)
+Chain 1, iteration 990 of 1000 (sampling)
+Chain 1, iteration 1000 of 1000 (sampling)
+Type: DONE 
