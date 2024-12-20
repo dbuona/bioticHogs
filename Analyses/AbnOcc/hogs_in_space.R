@@ -130,7 +130,7 @@ setwd("~/Documents/git/bioticHogs/")# mac
   
   SPACE<-dplyr::distinct(SPACE)
   write.csv(SPACE,"Analyses/AbnOcc/Input/abn_v_occ_spatial.csv")  
-  #space<-read.csv("Analyses/AbnOcc/Input/abn_v_occ_spatial.csv")
+  space<-read.csv("Analyses/AbnOcc/Input/abn_v_occ_spatial.csv")
   
   space<-SPACE
   space<-distinct(space)
@@ -168,11 +168,11 @@ setwd("~/Documents/git/bioticHogs/")# mac
   heat.test$frequency2<-ifelse(heat.test$frequency==0,NA,heat.test$frequency)
   heat.test$frequency3<-ifelse(is.na(heat.test$frequency2),"",paste(heat.test$frequency2*100,"%",sep=""))
   
-  jpeg("Analyses/AbnOcc/spatialheatmap.jpeg",width=8,height=8,units = 'in',res=300)
+  jpeg("Analyses/AbnOcc/spatialheatmap.jpeg",width=9,height=8,units = 'in',res=300)
   ggplot()+
     geom_point(data=space,aes(x=H.O,y=H.A),size=0.01)+
     geom_tile(data=heat.test,aes(x=H.O,y=H.A,fill=frequency),alpha=.8)+
-    tidybayes::theme_tidybayes()+
+    ggthemes::theme_few(base_size = 14)+
     scale_fill_distiller(palette = "BuGn",direction=1 )+
     geom_hline(yintercept=0,color="darkgray")+geom_vline(xintercept=0,color="darkgray")+
     ylab("abundance")+xlab("occurrence")+

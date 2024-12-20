@@ -8,10 +8,10 @@ options(mc.cores = parallel::detectCores())
 library(brms)
 library(tidybayes)
 if(FALSE){
-t1<-read.csv("Analyses/Master/Input/pairwise_invaded_taxo.csv")
+t1<-read.csv("Input/pairwise_invaded_taxo.csv")
 t1$community<-"invaded plots"
 
-t2<-read.csv("Analyses/Master/Input/pairwise_pristine_taxo.csv")
+t2<-read.csv("Input/pairwise_pristine_taxo.csv")
 t2$community<-"pristine plots"
 
 t3<-read.csv("Analyses/Master/Input/pairwise_remnant_taxo.csv")
@@ -21,9 +21,10 @@ t3$community<-"remnant natives"
 
 dat<-rbind(t1,t2)
 
+
 dat$Dist_jit<-ifelse(dat$Distance==0,.00001,dat$Distance)
 dat$logDist<-log(dat$Dist_jit)
-p<-read.csv("Data/FULLDatabase_10272022_diversity_PctCov_100_10272022_INHABIT.csv")
+p<-read.csv("..//..//Data/FULLDatabase_10272022_diversity_PctCov_100_10272022_INHABIT.csv")
 p<-dplyr::select(p,Dataset,L4_KEY,L3_KEY, L2_KEY, L1_KEY)
 p<-dplyr::distinct(p)
 p$group<-paste(p$Dataset,p$L4_KEY,sep="_")
@@ -44,9 +45,13 @@ setwd("Documents/git/bioticHogs/")
 dat<-read.csv("Analyses/Master/Input/taxdataforunity.csv")
 saveRDS(dat,"Analyses/Master/Input/taxdat4unity.rds")
 colnames(dat)
-dater<-dplyr::select(dat,site1,site2,local_similarity,logDist,Dataset,L4_KEY,L1_KEY)
-write.csv(dater,"Analyses/Master/Input/taxdataforunity2.csv")
-saveRDS(dater,"Analyses/Master/Input/taxdat4unity2.rds")
+dater<-dplyr::select(dat,site1,site2,local_similarity,community,logDist,Dataset,L4_KEY,L1_KEY)
+write.csv(dater,"Input/taxdataforunity2.csv")
+saveRDS(dater,"Input/taxdat4unity2.rds")
+
+rm(dater)
+dater<-readRDS("Analyses/Master/Input/taxdat4unity2.rds")
+
 tax1mod<-brm(
   bf(local_similarity~logDist*community+(logDist*community|L1_KEY)+(1|L4_KEY)+(1|Dataset)+(1|mm(site1,site2)),
      phi ~ logDist*community+(logDist*community|L1_KEY)+(1|L4_KEY)+(1|Dataset)+(1|mm(site1,site2)),
@@ -58,7 +63,7 @@ tax1mod<-brm(
   chains = 2, iter = 2000, warmup = 1000,
   cores = 4, seed = 1234, init=0)      
 
-
+save.RDS()
 
 if(FALSE){
 

@@ -240,12 +240,12 @@ heat.test$frequency<-round(heat.test$frequency,2)
 heat.test$frequency2<-ifelse(heat.test$frequency==0,NA,heat.test$frequency)
 heat.test$frequency3<-ifelse(is.na(heat.test$frequency2),"",paste(heat.test$frequency2*100,"%",sep=""))
 
-#jpeg("Analyses/AbnOcc/heatmap.jpeg",width=8,height=8,units = 'in',res=300)
+#jpeg("Analyses/AbnOcc/heatmap.jpeg",width=9,height=8,units = 'in',res=300)
 #pdf("Analyses/AbnOcc/heatmap.pdf",width=8,height=8)
 ggplot()+
   geom_point(data=env,aes(x=H.O,y=H.A),size=0.01)+
 geom_tile(data=heat.test,aes(x=H.O,y=H.A,fill=frequency),alpha=.8)+
-  tidybayes::theme_tidybayes()+
+  ggthemes::theme_few(base_size = 14)+
   scale_fill_distiller(palette = "Blues",direction=1 )+
   geom_hline(yintercept=0,color="darkgray")+geom_vline(xintercept=0,color="darkgray")+
   ylab("abundance")+xlab("occurence")+
@@ -518,6 +518,7 @@ ggpubr::ggarrange(p3b,pstage,common.legend = TRUE,ncol=1)
 dev.off()
 
 
+get_prior(quad~domers+(1|mm(site1,site2)),data=brforsmalz,family=categorical(link="logit"))
 
 test.mod3<-brms::brm(quad~domers+(1|mm(site1,site2)),data=brforsmalz,family=categorical(link="logit"))
 conditional_effects(test.mod3,categorical=TRUE)
