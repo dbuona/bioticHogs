@@ -141,7 +141,7 @@ heat.test<-heat.time %>% group_by(H.O,H.A) %>% count() #count how many are in ea
 heat.test$frequency<-heat.test$n/sum(heat.test$n) ## what percentage of totdal data are in each cell?
 heat.test$frequency<-round(heat.test$frequency,2)
 
-#jpeg("Analyses/AbnOcc/heatmap.jpeg",width=8,height=8,units = 'in',res=300) Figure 3
+# Figure 3
 ggplot()+
   geom_point(data=env,aes(x=H.O,y=H.A),size=0.01)+
   geom_tile(data=heat.test,aes(x=H.O,y=H.A,fill=frequency),alpha=.8)+
@@ -183,7 +183,7 @@ ex3<-ggplot(env,aes(as.factor(quad)))+geom_bar(position="fill",aes(fill=as.facto
   scale_fill_manual(name="",values=c("black","white"),labels=c("multiple datasets","same dataset"))+ggthemes::theme_few(base_size = 9)+
   scale_x_discrete(name="",labels=c("H abn \nH occ","H abn \nD occ","D abn \nD occ","D abn \nH occ"))+theme(legend.position = "top")+ylab("proportion")
 
-#jpeg("Analyses/AbnOcc/explaination1.jpeg",width=7,height=7,units = 'in',res=200)  Figure 4
+# Figure 4
 ggpubr::ggarrange(ex1,ex2,ex3,ex4,widths=c(.35,.3),heights=c(.3,.35),labels=c("a)","b)","c)","d)"))
 dev.off()  
 

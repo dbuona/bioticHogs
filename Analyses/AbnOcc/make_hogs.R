@@ -429,6 +429,7 @@ envgoo$cover_diff[which(is.na(envgoo$cover_diff))]<- "mixed"
 
 summary(glm(disagree~domers*cover_diff,data=envgoo,family="binomial"))
 brforsmalz<-sample_frac(envgoo,.1,replace = FALSE)
+
 brforsmalz$plotscale<-ifelse(brforsmalz$plot_distances>=median(brforsmalz$plot_distances),"far","close")
 
 test.mod.cov<-brms::brm(disagree~domers*cover_diff+(1|mm(site1,site2)),data=envgoo,family = "bernoulli")

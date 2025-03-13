@@ -16,14 +16,15 @@ library(geodist)
 library("MatchIt")
 
 setwd("/Users/danielbuonaiuto/Documents/git/bioticHogs/")
-load("Analyses/AbnOcc/spacematches.Rda")
+#load("Analyses/AbnOcc/spacematches.Rda")
 ### atempted plot matching
 ##data prep
 
 ##3read in plot summeries
 d<-read.csv("Data/FULLDatabase_10272022_diversity_PctCov_100_10272022_INHABIT.csv")
-#d2<-dplyr::select(d,gHM.tif,Dataset,Plot,Year,RelCov_I,NDMI_median_Apr1_Sept30_1985_2020_90m.tif,SG_n_tot_M_sl2_100m.tif,TMIN_Dec_Feb_1981_2018_mean.tif,VCF_percent_treeCover_2000_2016_mean_integer.tif,gHM.tif,L4_KEY)
-#write.csv(d2,"Analyses/AbnOcc/GEB/envplotdata.csv",row.names = FALSE)
+der<-dplyr::select(d,gHM.tif,Dataset,Plot,Year,RelCov_I,NDMI_median_Apr1_Sept30_1985_2020_90m.tif,SG_n_tot_M_sl2_100m.tif,TMIN_Dec_Feb_1981_2018_mean.tif,VCF_percent_treeCover_2000_2016_mean_integer.tif,gHM.tif,L4_KEY,Lat,Long)
+write.csv(der,"Analyses/AbnOcc/GEB/spatplotdata.csv",row.names = FALSE)
+
 d<-d %>%
   group_by(Plot) %>%
   filter(Year==max(Year)) %>%
@@ -51,7 +52,8 @@ d$Richness_tot<-d$Richness_I+d$Richness_N+d$Richness_Unk
 #d$status[which(d$RelCov_I<=d$Q25)]<- 0
 #d$status[which(d$RelCov_I>=d$Q75)]<- 1
 
-d2<-dplyr::select(d,Site,Lat,Long,gHM.tif,Dataset,Plot,Year,status,Richness_tot,NDMI_median_Apr1_Sept30_1985_2020_90m.tif,SG_n_tot_M_sl2_100m.tif,TMIN_Dec_Feb_1981_2018_mean.tif,VCF_percent_treeCover_2000_2016_mean_integer.tif,gHM.tif,L4_KEY)
+d2<-dplyr::select(d,Site,Lat,Long,gHM.tif,Dataset,Plot,Year,RelCov_I,status,Richness_tot,NDMI_median_Apr1_Sept30_1985_2020_90m.tif,SG_n_tot_M_sl2_100m.tif,TMIN_Dec_Feb_1981_2018_mean.tif,VCF_percent_treeCover_2000_2016_mean_integer.tif,gHM.tif,L4_KEY,Lat,Long)
+
 #d2<-dplyr::select(d,Site,Lat,Long,Dataset,Plot,Year,status,Richness_tot,NDMI_median_Apr1_Sept30_1985_2020_90m.tif,TMIN_Dec_Feb_1981_2018_mean.tif,gHM.tif,L4_KEY)
 d2<- d2[complete.cases(d2), ] ##55809
 
@@ -59,6 +61,8 @@ counters<-d2 %>% group_by(L4_KEY)%>%count()
 counterss<-filter(counters,n>1)
 d2<-filter(d2,L4_KEY %in% counterss$L4_KEY)
 
+
+write.csv(d2,"Analyses/AbnOcc/GEB/envplotdata.csv",row.names = FALSE)
 set.seed(111)
 m2<-matchit(status~L4_KEY+Dataset+
                   NDMI_median_Apr1_Sept30_1985_2020_90m.tif+

@@ -7,8 +7,11 @@ library(dplyr)
 library(tidyr)
 library("MatchIt")
 
+
 d<-read.csv("Analyses/AbnOcc/GEB/envplotdata.csv") ### read in data
-d<-d %>% group_by(Plot) %>% filter(Year==max(Year)) %>% ungroup() 2###include only more recent surveys from repeat sampled plots
+
+
+d<-d %>% group_by(Plot) %>% filter(Year==max(Year)) %>% ungroup() ###include only more recent surveys from repeat sampled plots
 
 d$status<-ifelse(d$RelCov_I>0,1,0) ## assign native status
 
@@ -26,14 +29,14 @@ d<-filter(d,L4_KEY %in% counters$L4_KEY) ### filter out regions with less than 2
 d<- d[complete.cases(d), ] # select only compelte cases (needed for matching) 57,535
 
 set.seed(111)
-m2<-matchit(status~L4_KEY+
+m2<-matchit(status~L4_KEY+Dataset+
               NDMI_median_Apr1_Sept30_1985_2020_90m.tif+
               TMIN_Dec_Feb_1981_2018_mean.tif+
               SG_n_tot_M_sl2_100m.tif+
               VCF_percent_treeCover_2000_2016_mean_integer.tif+
-              gHM.tif,data=d,method = "nearest",distance="glm",exact=~L4_KEY) ## match plots based on environmental variables
+              gHM.tif,data=d,method = "nearest",distance="glm",exact=~L4_KEY+Dataset) ## match plots based on environmental variables
 
-mdat2<-match.data(m2) ## covert to data frame #23,198 plot matches
+mdat2<-match.data(m2) ## covert to data frame #21,524 plot matches
 
 
 #### make plot S1#########
