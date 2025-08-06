@@ -1018,12 +1018,14 @@ gammamod<-brm(
   cores = 4, seed = 1234,backend = "cmdstanr")
 
 alphamod<-brm(
-  bf(TD_alpha ~n_scale+(1|NA_L1NAME)+(1|Dataset)),
-  data = taxinvyq2,
+  bf(inv ~n_scale+(1|NA_L1NAME),
+  data = taxdat,
   family =  gaussian(),
   control=list(adapt_delta=.99),
   chains = 4, iter = 4000, warmup = 3000,
-  cores = 4, seed = 1234,backend = "cmdstanr")
+ 
+  
+   cores = 4, seed = 1234,backend = "cmdstanr")
 
 #gammamodphy<-brm(
   bf(PD_gamma ~n_scale+(1|NA_L1NAME)+(1|Dataset)),
